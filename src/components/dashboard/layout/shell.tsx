@@ -13,14 +13,8 @@ export function Shell({ children }: ShellProps) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* Mobile sidebar overlay */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      {/* Desktop sidebar */}
-      <div className="hidden lg:fixed lg:inset-y-0 lg:z-50 lg:flex lg:w-64 lg:flex-col">
-        <Sidebar isOpen={true} onClose={() => {}} />
-      </div>
-
       {/* Main content */}
       <div className="lg:pl-64">
         <Header onMenuClick={() => setSidebarOpen(true)} />

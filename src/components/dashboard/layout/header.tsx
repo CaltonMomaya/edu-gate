@@ -14,6 +14,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { createClient } from '@/lib/supabase/client';
 import { Menu, Bell, LogOut, User, Settings } from 'lucide-react';
+import { ROLES } from '@/lib/auth/roles';
+import type { UserRole } from '@/types';
 
 interface HeaderProps {
   onMenuClick: () => void;
@@ -23,6 +25,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const router = useRouter();
   const supabase = createClient();
   const [userName, setUserName] = useState('');
+  const [userRole, setUserRole] = useState<UserRole>('admin');
   const [schoolName, setSchoolName] = useState('');
 
   useEffect(() => {
@@ -33,11 +36,12 @@ export function Header({ onMenuClick }: HeaderProps) {
         
         const { data: userData } = await supabase
           .from('users')
-          .select('school_id, full_name')
+          .select('school_id, full_name, role')
           .eq('id', user.id)
           .single();
 
-        if (userData?.school_id) {
+        if (userData) {
+          setUserRole(userData.role as UserRole);
           const { data: school } = await supabase
             .from('schools')
             .select('name')
@@ -57,10 +61,11 @@ export function Header({ onMenuClick }: HeaderProps) {
     router.refresh();
   }
 
+  const roleLabel = ROLES.find(r => r.value === userRole)?.label || 'Staff';
+
   return (
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
       <div className="flex items-center justify-between h-16 px-4 lg:px-6">
-        {/* Left - Mobile menu + School name */}
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
@@ -71,12 +76,11 @@ export function Header({ onMenuClick }: HeaderProps) {
             <Menu className="h-5 w-5" />
           </Button>
           <div>
-            <h2 className="text-sm font-semibold text-slate-800">{schoolName || 'Loading...'}</h2>
+            <h2 className="text-sm font-semibold text-slate-800">{schoolName || 'EDU GATE'}</h2>
             <p className="text-xs text-slate-500">Dashboard</p>
           </div>
         </div>
 
-        {/* Right - Notifications + User */}
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-700">
             <Bell className="h-5 w-5" />
@@ -92,12 +96,15 @@ export function Header({ onMenuClick }: HeaderProps) {
                 </Avatar>
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-medium text-slate-700">{userName || 'Admin'}</p>
-                  <p className="text-xs text-slate-500">Administrator</p>
+                  <p className="text-xs text-slate-500">{roleLabel}</p>
                 </div>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-slate-400 font-normal -mt-2">
+                {roleLabel} • {schoolName}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem>
                 <User className="mr-2 h-4 w-4" /> Profile

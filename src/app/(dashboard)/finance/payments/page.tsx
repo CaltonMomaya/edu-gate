@@ -55,10 +55,13 @@ export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [schoolId, setSchoolId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [search, setSearch] = useState('');
 
-  // Form state
-  const [selectedStudent, setSelectedStudent] = useState('');
+  // Student search
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
+  const [showResults, setShowResults] = useState(false);
+
+  // Payment form
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [transRef, setTransRef] = useState('');
@@ -74,11 +77,7 @@ export default function PaymentsPage() {
     if (!user) return;
 
     const { data: userData } = await supabase
-      .from('users')
-      .select('school_id')
-      .eq('id', user.id)
-      .single();
-
+      .from('users').select('school_id').eq('id', user.id).single();
     if (!userData?.school_id) return;
     setSchoolId(userData.school_id);
 
@@ -86,6 +85,7 @@ export default function PaymentsPage() {
       .from('students')
       .select('id, first_name, last_name, admission_number, grade')
       .eq('school_id', userData.school_id)
+      .eq('status', 'active')
       .order('first_name');
 
     if (studentsData) setStudents(studentsData);
@@ -100,10 +100,27 @@ export default function PaymentsPage() {
     if (paymentsData) setPayments(paymentsData);
   }
 
+  // Filter students as user types
+  const filteredStudents = students.filter(s => {
+    if (!studentSearch) return false;
+    const query = studentSearch.toLowerCase();
+    return (
+      s.first_name.toLowerCase().includes(query) ||
+      s.last_name.toLowerCase().includes(query) ||
+      s.admission_number.toLowerCase().includes(query)
+    );
+  });
+
+  function selectStudent(student: Student) {
+    setSelectedStudent(student);
+    setStudentSearch(`${student.first_name} ${student.last_name} (${student.admission_number})`);
+    setShowResults(false);
+  }
+
   async function recordPayment(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedStudent || !amount) {
-      toast.error('Select a student and enter an amount');
+      toast.error('Search, select a student, and enter an amount');
       return;
     }
 
@@ -112,7 +129,7 @@ export default function PaymentsPage() {
 
     // 1. Insert payment
     const { error } = await supabase.from('payments').insert({
-      student_id: selectedStudent,
+      student_id: selectedStudent.id,
       school_id: schoolId,
       amount: paymentAmount,
       payment_method: method,
@@ -128,49 +145,42 @@ export default function PaymentsPage() {
       return;
     }
 
-    // 2. Update or create fee balance
+    // 2. Update fee balance
     const { data: existingBalance } = await supabase
       .from('student_fee_balances')
       .select('*')
-      .eq('student_id', selectedStudent)
+      .eq('student_id', selectedStudent.id)
       .eq('academic_year', academicYear)
       .single();
 
     if (existingBalance) {
       const newPaid = existingBalance.total_paid + paymentAmount;
       const newBalance = existingBalance.total_charged - newPaid;
-      await supabase
-        .from('student_fee_balances')
-        .update({
-          total_paid: newPaid,
-          balance: newBalance,
-          overpayment: newBalance < 0 ? Math.abs(newBalance) : 0,
-        })
-        .eq('id', existingBalance.id);
+      await supabase.from('student_fee_balances').update({
+        total_paid: newPaid,
+        balance: newBalance,
+        overpayment: newBalance < 0 ? Math.abs(newBalance) : 0,
+      }).eq('id', existingBalance.id);
     } else {
       await supabase.from('student_fee_balances').insert({
-        student_id: selectedStudent,
+        student_id: selectedStudent.id,
         school_id: schoolId,
         total_charged: 0,
         total_paid: paymentAmount,
-        balance: -paymentAmount, // Negative = overpayment
+        balance: -paymentAmount,
         overpayment: paymentAmount,
         academic_year: academicYear,
       });
     }
 
-    toast.success(`KES ${paymentAmount.toLocaleString()} recorded successfully!`);
+    toast.success(`KES ${paymentAmount.toLocaleString()} recorded for ${selectedStudent.first_name}!`);
     setAmount('');
     setTransRef('');
-    setSelectedStudent('');
+    setSelectedStudent(null);
+    setStudentSearch('');
     loadData();
     setIsLoading(false);
   }
-
-  const filteredStudents = students.filter(s => {
-    const name = `${s.first_name} ${s.last_name}`.toLowerCase();
-    return name.includes(search.toLowerCase()) || s.admission_number.includes(search);
-  });
 
   return (
     <div className="p-6 space-y-6">
@@ -189,26 +199,55 @@ export default function PaymentsPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={recordPayment} className="space-y-4">
-              <div className="space-y-2">
-                <Label>Student *</Label>
+              {/* Searchable Student Input */}
+              <div className="space-y-2 relative">
+                <Label>Search Student *</Label>
                 <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input
-                    placeholder="Search student..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="mb-1"
+                    placeholder="Type name or admission number..."
+                    className="pl-10"
+                    value={studentSearch}
+                    onChange={(e) => {
+                      setStudentSearch(e.target.value);
+                      setSelectedStudent(null);
+                      setShowResults(true);
+                    }}
+                    onFocus={() => setShowResults(true)}
                   />
-                  <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-                    <SelectTrigger><SelectValue placeholder="Select student" /></SelectTrigger>
-                    <SelectContent className="max-h-48">
-                      {filteredStudents.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.first_name} {s.last_name} ({s.admission_number})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
                 </div>
+
+                {/* Dropdown Results */}
+                {showResults && studentSearch && !selectedStudent && (
+                  <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
+                    {filteredStudents.length === 0 ? (
+                      <p className="p-3 text-sm text-slate-500">No students found</p>
+                    ) : (
+                      filteredStudents.slice(0, 20).map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b last:border-b-0"
+                          onClick={() => selectStudent(s)}
+                        >
+                          <p className="font-medium text-sm">{s.first_name} {s.last_name}</p>
+                          <p className="text-xs text-slate-500">{s.admission_number} · Grade {s.grade}</p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+
+                {/* Selected Student */}
+                {selectedStudent && (
+                  <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg border border-blue-200">
+                    <div>
+                      <p className="font-medium text-sm">{selectedStudent.first_name} {selectedStudent.last_name}</p>
+                      <p className="text-xs text-slate-500">{selectedStudent.admission_number} · Grade {selectedStudent.grade}</p>
+                    </div>
+                    <button type="button" onClick={() => { setSelectedStudent(null); setStudentSearch(''); }} className="text-red-500 text-xs">Change</button>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -262,9 +301,7 @@ export default function PaymentsPage() {
         {/* Payment History */}
         <Card className="border-0 shadow-sm lg:col-span-2">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Receipt className="h-5 w-5 text-blue-600" /> Recent Payments
-            </CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5 text-blue-600" /> Recent Payments</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -274,28 +311,18 @@ export default function PaymentsPage() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead>Term</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {payments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="text-center text-slate-500 py-8">
-                      No payments recorded yet.
-                    </TableCell>
-                  </TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center text-slate-500 py-8">No payments yet.</TableCell></TableRow>
                 ) : (
                   payments.map((p) => (
                     <TableRow key={p.id}>
-                      <TableCell className="font-medium">
-                        {p.students?.first_name} {p.students?.last_name}
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="bg-emerald-100 text-emerald-700">KES {p.amount.toLocaleString()}</Badge>
-                      </TableCell>
+                      <TableCell className="font-medium">{p.students?.first_name} {p.students?.last_name}</TableCell>
+                      <TableCell><Badge className="bg-emerald-100 text-emerald-700">KES {p.amount.toLocaleString()}</Badge></TableCell>
                       <TableCell className="capitalize text-slate-500">{p.payment_method.replace('_', ' ')}</TableCell>
                       <TableCell className="text-slate-500">{new Date(p.payment_date).toLocaleDateString()}</TableCell>
-                      <TableCell className="text-slate-500">{p.term} / {p.academic_year}</TableCell>
                     </TableRow>
                   ))
                 )}

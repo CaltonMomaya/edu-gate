@@ -94,7 +94,6 @@ export default function StudentProfilePage() {
 
     setStudent(data);
 
-    // Load guardians
     const { data: guardiansData } = await supabase
       .from('guardians')
       .select('*')
@@ -103,7 +102,6 @@ export default function StudentProfilePage() {
 
     if (guardiansData) setGuardians(guardiansData);
 
-    // Load fee balances
     const { data: feeData } = await supabase
       .from('student_fee_balances')
       .select('*')
@@ -131,7 +129,6 @@ export default function StudentProfilePage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link href="/students" className="text-slate-500 hover:text-slate-700">
@@ -156,89 +153,38 @@ export default function StudentProfilePage() {
           </div>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">Edit</Button>
+          <Link href={`/students/${student.id}/edit`}>
+            <Button variant="outline" size="sm">Edit</Button>
+          </Link>
           <Button variant="outline" size="sm" className="text-red-600">Transfer</Button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Details */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Personal Info */}
           <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <User className="h-5 w-5 text-blue-600" /> Personal Information
-              </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><User className="h-5 w-5 text-blue-600" /> Personal Information</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-xs text-slate-500">First Name</p>
-                <p className="font-medium">{student.first_name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Middle Name</p>
-                <p className="font-medium">{student.middle_name || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Last Name</p>
-                <p className="font-medium">{student.last_name}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500"><Calendar className="h-3 w-3 inline mr-1" /> Date of Birth</p>
-                <p className="font-medium">{student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Gender</p>
-                <p className="font-medium capitalize">{student.gender || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500"><Hash className="h-3 w-3 inline mr-1" /> Admission No.</p>
-                <p className="font-medium">{student.admission_number}</p>
-              </div>
+              <div><p className="text-xs text-slate-500">First Name</p><p className="font-medium">{student.first_name}</p></div>
+              <div><p className="text-xs text-slate-500">Middle Name</p><p className="font-medium">{student.middle_name || '-'}</p></div>
+              <div><p className="text-xs text-slate-500">Last Name</p><p className="font-medium">{student.last_name}</p></div>
+              <div><p className="text-xs text-slate-500"><Calendar className="h-3 w-3 inline mr-1" /> Date of Birth</p><p className="font-medium">{student.date_of_birth ? new Date(student.date_of_birth).toLocaleDateString() : '-'}</p></div>
+              <div><p className="text-xs text-slate-500">Gender</p><p className="font-medium capitalize">{student.gender || '-'}</p></div>
+              <div><p className="text-xs text-slate-500"><Hash className="h-3 w-3 inline mr-1" /> Admission No.</p><p className="font-medium">{student.admission_number}</p></div>
             </CardContent>
           </Card>
 
-          {/* Academic Info */}
           <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <GraduationCap className="h-5 w-5 text-emerald-600" /> Academic Information
-              </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><GraduationCap className="h-5 w-5 text-emerald-600" /> Academic Information</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              <div>
-                <p className="text-xs text-slate-500">Grade</p>
-                <Badge variant="outline" className="text-base">Grade {student.grade}</Badge>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500"><MapPin className="h-3 w-3 inline mr-1" /> Stream</p>
-                <p className="font-medium">{student.stream || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500"><Home className="h-3 w-3 inline mr-1" /> House</p>
-                <p className="font-medium">{student.house || '-'}</p>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Status</p>
-                <Badge className={student.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>
-                  {student.status}
-                </Badge>
-              </div>
-              <div>
-                <p className="text-xs text-slate-500">Registered</p>
-                <p className="font-medium text-sm">{new Date(student.created_at).toLocaleDateString()}</p>
-              </div>
+              <div><p className="text-xs text-slate-500">Grade</p><Badge variant="outline" className="text-base">Grade {student.grade}</Badge></div>
+              <div><p className="text-xs text-slate-500"><MapPin className="h-3 w-3 inline mr-1" /> Stream</p><p className="font-medium">{student.stream || '-'}</p></div>
+              <div><p className="text-xs text-slate-500"><Home className="h-3 w-3 inline mr-1" /> House</p><p className="font-medium">{student.house || '-'}</p></div>
             </CardContent>
           </Card>
 
-          {/* Guardian Contacts */}
           <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Shield className="h-5 w-5 text-amber-600" /> Guardian Contacts
-              </CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Shield className="h-5 w-5 text-amber-600" /> Guardian Contacts</CardTitle></CardHeader>
             <CardContent className="space-y-4">
               {guardians.length === 0 ? (
                 <p className="text-slate-500 text-sm">No guardians registered.</p>
@@ -264,30 +210,22 @@ export default function StudentProfilePage() {
           </Card>
         </div>
 
-        {/* Right Column - Fee Balances */}
         <div className="space-y-6">
           <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Fee Balances</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Fee Balances</CardTitle></CardHeader>
             <CardContent>
               {feeBalances.length === 0 ? (
                 <p className="text-slate-500 text-sm">No fee records yet.</p>
               ) : (
                 <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Year</TableHead>
-                      <TableHead>Balance</TableHead>
-                    </TableRow>
-                  </TableHeader>
+                  <TableHeader><TableRow><TableHead>Year</TableHead><TableHead>Balance</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {feeBalances.map((fee) => (
                       <TableRow key={fee.academic_year}>
                         <TableCell>{fee.academic_year}</TableCell>
                         <TableCell>
                           <span className={fee.balance > 0 ? 'text-red-600 font-medium' : fee.balance < 0 ? 'text-emerald-600 font-medium' : 'text-slate-600'}>
-                            🪙 KES {fee.balance.toLocaleString()}
+                            KES {fee.balance.toLocaleString()}
                           </span>
                         </TableCell>
                       </TableRow>
@@ -298,24 +236,15 @@ export default function StudentProfilePage() {
             </CardContent>
           </Card>
 
-          {/* Quick Actions */}
           <Card className="border-0 shadow-sm">
-            <CardHeader>
-              <CardTitle className="text-lg">Quick Actions</CardTitle>
-            </CardHeader>
+            <CardHeader><CardTitle className="text-lg">Quick Actions</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                💰 Record Payment
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                📚 Issue Book
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                ⚠️ Record Offense
-              </Button>
-              <Button variant="outline" className="w-full justify-start" size="sm">
-                🏠 Request Leave
-              </Button>
+              <Link href={`/students/${student.id}/edit`}>
+                <Button variant="outline" className="w-full justify-start" size="sm">✏️ Edit Details</Button>
+              </Link>
+              <Button variant="outline" className="w-full justify-start" size="sm">💰 Record Payment</Button>
+              <Button variant="outline" className="w-full justify-start" size="sm">⚠️ Record Offense</Button>
+              <Button variant="outline" className="w-full justify-start" size="sm">🏠 Request Leave</Button>
             </CardContent>
           </Card>
         </div>

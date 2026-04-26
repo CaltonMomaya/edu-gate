@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { UserPlus, Search, Users } from 'lucide-react';
+import { UserPlus, Search, Users, Eye } from 'lucide-react';
 
 interface Student {
   id: string;
@@ -83,16 +83,14 @@ export default function StudentsPage() {
 
       <Card className="border-0 shadow-sm">
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search by name or admission number..."
-                className="pl-10"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search by name or admission number..."
+              className="pl-10"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -104,16 +102,17 @@ export default function StudentsPage() {
                 <TableHead>Grade</TableHead>
                 <TableHead>Stream</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="w-10"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">Loading...</TableCell>
+                  <TableCell colSpan={6} className="text-center py-8">Loading...</TableCell>
                 </TableRow>
               ) : filteredStudents.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     <Users className="h-12 w-12 text-slate-300 mx-auto mb-2" />
                     <p className="text-slate-500">No students registered yet</p>
                     <Link href="/students/add" className="text-blue-600 hover:underline text-sm">
@@ -144,6 +143,13 @@ export default function StudentsPage() {
                       <Badge className={student.status === 'active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'}>
                         {student.status}
                       </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/students/${student.id}`}>
+                        <Button variant="ghost" size="icon" className="text-slate-400 hover:text-blue-600">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
                     </TableCell>
                   </TableRow>
                 ))

@@ -98,7 +98,7 @@ export default function OverviewPage() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-800">KES 0</div>
+            <div className="text-2xl font-bold text-slate-800">🪙 KES 0</div>
             <p className="text-xs text-slate-500 mt-1">This term</p>
           </CardContent>
         </Card>

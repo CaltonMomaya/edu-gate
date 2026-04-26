@@ -287,7 +287,7 @@ export default function StudentProfilePage() {
                         <TableCell>{fee.academic_year}</TableCell>
                         <TableCell>
                           <span className={fee.balance > 0 ? 'text-red-600 font-medium' : fee.balance < 0 ? 'text-emerald-600 font-medium' : 'text-slate-600'}>
-                            KES {fee.balance.toLocaleString()}
+                            🪙 KES {fee.balance.toLocaleString()}
                           </span>
                         </TableCell>
                       </TableRow>

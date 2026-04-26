@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { ArrowLeft, Send, Loader2, Users, Phone, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Send, Loader2, Users, Phone, MessageSquare, X } from 'lucide-react';
 import { sendSms } from '@/lib/sms/send';
 
 interface GuardianWithStudent {
@@ -23,8 +23,8 @@ export default function BulkSmsPage() {
   const [schoolId, setSchoolId] = useState('');
   const [smsBalance, setSmsBalance] = useState(0);
   const [isSending, setIsSending] = useState(false);
-  const [selectedGrade, setSelectedGrade] = useState('all');
-  const [selectedStream, setSelectedStream] = useState('all');
+  const [selectedGrades, setSelectedGrades] = useState<Set<string>>(new Set(['all']));
+  const [selectedStreams, setSelectedStreams] = useState<Set<string>>(new Set(['all']));
   const [searchFilter, setSearchFilter] = useState('');
   const [guardians, setGuardians] = useState<GuardianWithStudent[]>([]);
   const [allGuardians, setAllGuardians] = useState<GuardianWithStudent[]>([]);
@@ -33,7 +33,7 @@ export default function BulkSmsPage() {
   const [sentCount, setSentCount] = useState(0);
 
   useEffect(() => { loadAllForCounts(); }, []);
-  useEffect(() => { loadFiltered(); }, [selectedGrade, selectedStream]);
+  useEffect(() => { loadFiltered(); }, [selectedGrades, selectedStreams]);
 
   async function loadAllForCounts() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -64,8 +64,18 @@ export default function BulkSmsPage() {
     if (!userData?.school_id) return;
 
     let query = supabase.from('students').select('id, first_name, last_name, admission_number, grade, stream').eq('school_id', userData.school_id).eq('status', 'active');
-    if (selectedGrade !== 'all') query = query.eq('grade', selectedGrade);
-    if (selectedStream !== 'all') query = query.eq('stream', selectedStream);
+
+    // Filter by multiple grades
+    if (!selectedGrades.has('all')) {
+      const gradesArray = Array.from(selectedGrades);
+      if (gradesArray.length > 0) query = query.in('grade', gradesArray);
+    }
+
+    // Filter by multiple streams
+    if (!selectedStreams.has('all')) {
+      const streamsArray = Array.from(selectedStreams);
+      if (streamsArray.length > 0) query = query.in('stream', streamsArray);
+    }
 
     const { data: students } = await query.order('last_name');
     if (!students || students.length === 0) { setGuardians([]); return; }
@@ -79,6 +89,28 @@ export default function BulkSmsPage() {
       }));
     } else setGuardians([]);
     setSelectedIds(new Set());
+  }
+
+  // Multi-select handlers
+  function toggleGrade(grade: string) {
+    const ns = new Set(selectedGrades);
+    if (grade === 'all') { setSelectedGrades(new Set(['all'])); setSelectedStreams(new Set(['all'])); return; }
+    ns.delete('all');
+    if (ns.has(grade)) ns.delete(grade);
+    else ns.add(grade);
+    if (ns.size === 0) ns.add('all');
+    setSelectedGrades(ns);
+    setSelectedStreams(new Set(['all']));
+  }
+
+  function toggleStream(stream: string) {
+    const ns = new Set(selectedStreams);
+    if (stream === 'all') { setSelectedStreams(new Set(['all'])); return; }
+    ns.delete('all');
+    if (ns.has(stream)) ns.delete(stream);
+    else ns.add(stream);
+    if (ns.size === 0) ns.add('all');
+    setSelectedStreams(ns);
   }
 
   function toggleSelect(id: string) {
@@ -117,14 +149,17 @@ export default function BulkSmsPage() {
   allGuardians.forEach(g => { gradeCounts[g.student_grade] = (gradeCounts[g.student_grade] || 0) + 1; });
 
   const streamCounts: Record<string, number> = {};
-  const gradeFilteredForStreams = selectedGrade === 'all' ? allGuardians : guardians;
+  const gradeFilteredForStreams = selectedGrades.has('all') ? allGuardians : guardians;
   gradeFilteredForStreams.forEach(g => { const s = g.student_stream || 'Unassigned'; streamCounts[s] = (streamCounts[s] || 0) + 1; });
+
+  const selectedGradeCount = selectedGrades.has('all') ? allGuardians.length : 
+    allGuardians.filter(g => selectedGrades.has(g.student_grade)).length;
 
   return (
     <div className="p-6 max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Link href="/sms"><ArrowLeft className="h-5 w-5 text-slate-500" /></Link>
-        <div><h1 className="text-2xl font-bold text-slate-800">Bulk SMS</h1><p className="text-slate-500">Send messages to guardians by grade & stream</p></div>
+        <div><h1 className="text-2xl font-bold text-slate-800">Bulk SMS</h1><p className="text-slate-500">Multi-select grades & streams · Hold Ctrl/Cmd to select multiple</p></div>
       </div>
 
       <div className="grid grid-cols-4 gap-4">
@@ -134,35 +169,44 @@ export default function BulkSmsPage() {
         <Card><CardContent className="p-4 text-center"><Send className="h-5 w-5 mx-auto text-purple-600" /><p className="text-2xl font-bold">{sentCount}</p><p className="text-xs text-slate-500">Sent</p></CardContent></Card>
       </div>
 
-      {/* Grade Filter */}
+      {/* Grade Multi-Select */}
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-2">1️⃣ Select Grade:</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold text-slate-700">1️⃣ Select Grades (Ctrl/Cmd + Click for multiple):</p>
+          {!selectedGrades.has('all') && (
+            <Badge className="bg-blue-600 text-white">{selectedGrades.size} grade{selectedGrades.size > 1 ? 's' : ''} · {selectedGradeCount} guardians</Badge>
+          )}
+        </div>
         <div className="flex gap-2 flex-wrap">
-          <Badge className={`cursor-pointer px-4 py-2 text-sm ${selectedGrade === 'all' ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => { setSelectedGrade('all'); setSelectedStream('all'); }}>
+          <Badge className={`cursor-pointer px-4 py-2 text-sm ${selectedGrades.has('all') ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => toggleGrade('all')}>
             All Grades ({allGuardians.length})
           </Badge>
           {Object.entries(gradeCounts).sort().map(([g, c]) => (
-            <Badge key={g} className={`cursor-pointer px-4 py-2 text-sm ${selectedGrade === g ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => { setSelectedGrade(g); setSelectedStream('all'); }}>
+            <Badge key={g} className={`cursor-pointer px-4 py-2 text-sm ${selectedGrades.has(g) ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => toggleGrade(g)}>
               Grade {g} ({c})
             </Badge>
           ))}
         </div>
       </div>
 
-      {/* Stream Filter */}
+      {/* Stream Multi-Select */}
       <div>
-        <p className="text-sm font-semibold text-slate-700 mb-2">2️⃣ Select Stream:</p>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-semibold text-slate-700">2️⃣ Select Streams (Ctrl/Cmd + Click for multiple):</p>
+          {!selectedStreams.has('all') && (
+            <Badge className="bg-emerald-600 text-white">{selectedStreams.size} stream{selectedStreams.size > 1 ? 's' : ''}</Badge>
+          )}
+        </div>
         <div className="flex gap-2 flex-wrap">
-          <Badge className={`cursor-pointer px-4 py-2 text-sm ${selectedStream === 'all' ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => setSelectedStream('all')}>
-            All Streams ({selectedGrade === 'all' ? allGuardians.length : guardians.length})
+          <Badge className={`cursor-pointer px-4 py-2 text-sm ${selectedStreams.has('all') ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => toggleStream('all')}>
+            All Streams ({guardians.length})
           </Badge>
           {Object.entries(streamCounts).sort().map(([s, c]) => (
-            <Badge key={s} className={`cursor-pointer px-4 py-2 text-sm ${selectedStream === s ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => setSelectedStream(s)}>
+            <Badge key={s} className={`cursor-pointer px-4 py-2 text-sm ${selectedStreams.has(s) ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => toggleStream(s)}>
               {s} ({c})
             </Badge>
           ))}
         </div>
-        {selectedGrade === 'all' && <p className="text-xs text-slate-400 mt-1">💡 Select a grade first to see streams for that grade only</p>}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

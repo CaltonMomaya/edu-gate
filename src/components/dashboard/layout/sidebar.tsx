@@ -23,7 +23,7 @@ import {
   FlaskConical,
   X,
   Home,
-  CreditCard,
+  CreditCard, MessageSquare,
   UserPlus,
 } from 'lucide-react';
 
@@ -41,7 +41,7 @@ const navigation = [
   { name: 'Houses', href: '/houses', icon: Home },
   { separator: true },
   { name: 'Finance', href: '/finance', icon: DollarSign },
-  { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, indent: true },
+  { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, MessageSquare, indent: true },
   { name: 'Payments', href: '/finance/payments', icon: DollarSign, indent: true },
   { name: 'Reports', href: '/finance/reports', icon: BookOpen, indent: true },
   { separator: true },
@@ -54,6 +54,7 @@ const navigation = [
   { name: 'Black Book', href: '/discipline/black-book', icon: Scale, indent: true },
   { separator: true },
   { name: 'Leave Management', href: '/leave', icon: DoorOpen },
+  { name: "SMS", href: "/sms", icon: MessageSquare },
   { separator: true },
   { name: 'Clearance', href: '/clearance', icon: ClipboardCheck },
   { name: 'Alumni', href: '/alumni', icon: GraduationCap },

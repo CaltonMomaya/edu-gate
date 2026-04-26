@@ -75,7 +75,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         if (item.separator) return <Separator key={`sep-${index}`} className="my-3 bg-slate-700/50" />;
         const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
         return (
-          <Link key={item.name} href={item.href} onClick={handleNavClick}
+          <Link key={item.name} href={item.href || ""} onClick={handleNavClick}
             className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
               item.indent && 'ml-4',
               isActive ? 'bg-gradient-to-r from-blue-600/30 to-emerald-600/30 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white')}>

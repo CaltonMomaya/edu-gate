@@ -12,7 +12,7 @@ export default function IdCardPage() {
   const { id } = useParams();
   const supabase = createClient();
   const [student, setStudent] = useState<any>(null);
-  const [emergencyGuardian, setEmergencyGuardian] = useState<any>(null);
+  const [primaryGuardian, setPrimaryGuardian] = useState<any>(null);
   const [schoolName, setSchoolName] = useState('');
   const [isLoading, setIsLoading] = useState(true);
 
@@ -29,8 +29,9 @@ export default function IdCardPage() {
     if (stud) setStudent(stud);
     const { data: guards } = await supabase.from('guardians').select('*').eq('student_id', id);
     if (guards) {
-      const em = guards.find((g: any) => g.is_emergency_contact) || guards.find((g: any) => g.is_primary);
-      setEmergencyGuardian(em);
+      // Get PRIMARY guardian (is_primary = true)
+      const primary = guards.find((g: any) => g.is_primary === true);
+      if (primary) setPrimaryGuardian(primary);
     }
     setIsLoading(false);
   }
@@ -49,7 +50,6 @@ export default function IdCardPage() {
       </div>
 
       <div className="max-w-[320px] mx-auto border-2 border-slate-800 rounded-md overflow-hidden bg-white" style={{ width: '320px', height: '200px' }}>
-        {/* Header */}
         <div className="bg-blue-800 text-white p-2 flex items-center justify-between print:bg-blue-800">
           <div>
             <p className="text-[10px] font-bold leading-tight">{schoolName}</p>
@@ -58,7 +58,6 @@ export default function IdCardPage() {
           <p className="text-[8px] font-bold bg-white text-blue-800 px-1 rounded">ID</p>
         </div>
         
-        {/* Body */}
         <div className="p-2 flex gap-2">
           <Avatar className="h-16 w-16 rounded-sm border-2 border-slate-300 flex-shrink-0">
             <AvatarImage src={student.profile_picture_url || ''} className="object-cover" />
@@ -73,15 +72,15 @@ export default function IdCardPage() {
           </div>
         </div>
         
-        {/* Emergency Contact */}
         <div className="px-2 pb-1">
-          <p className="text-[7px] text-slate-500 font-semibold">EMERGENCY CONTACT</p>
-          {emergencyGuardian ? (
-            <p className="text-[8px] text-slate-700">{emergencyGuardian.full_name} · 📞 {emergencyGuardian.phone_number}</p>
-          ) : <p className="text-[8px] text-slate-400">None</p>}
+          <p className="text-[7px] text-slate-500 font-semibold">
+            {primaryGuardian ? `${primaryGuardian.relationship.toUpperCase()}'S CONTACT` : 'PRIMARY CONTACT'}
+          </p>
+          {primaryGuardian ? (
+            <p className="text-[8px] text-slate-700">{primaryGuardian.full_name} · 📞 {primaryGuardian.phone_number}</p>
+          ) : <p className="text-[8px] text-slate-400">No primary contact</p>}
         </div>
         
-        {/* Footer */}
         <div className="bg-slate-100 px-2 py-1 flex justify-between items-center border-t border-slate-300 print:bg-slate-100">
           <p className="text-[7px] text-slate-500">ID: {student.id?.slice(0, 8).toUpperCase()}</p>
           <p className="text-[7px] text-slate-500">Issued: {new Date().toLocaleDateString()}</p>

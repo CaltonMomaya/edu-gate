@@ -38,6 +38,7 @@ const navigation = [
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Teachers & Staff', href: '/teachers', icon: UserPlus },
   { name: 'Classes & Streams', href: '/classes', icon: Home },
+  { name: "Exams & Results", href: "/exams", icon: BookOpen },
   { name: 'Houses', href: '/houses', icon: Home },
   { separator: true },
   { name: 'Finance', href: '/finance', icon: DollarSign },

@@ -245,6 +245,7 @@ export default function StudentProfilePage() {
               <Button variant="outline" className="w-full justify-start" size="sm">💰 Record Payment</Button>
               <Button variant="outline" className="w-full justify-start" size="sm">⚠️ Record Offense</Button>
               <Button variant="outline" className="w-full justify-start" size="sm">🏠 Request Leave</Button>
+              <Link href={`/students/${student.id}/id-card`}><Button variant="outline" className="w-full justify-start" size="sm">🪪 Generate ID Card</Button></Link>
             </CardContent>
           </Card>
         </div>

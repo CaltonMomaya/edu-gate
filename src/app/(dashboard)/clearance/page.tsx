@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, ClipboardCheck, CheckCircle, XCircle, Clock, ArrowRight, Eye } from 'lucide-react';
+import { Search, ClipboardCheck, CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
 
 interface Department {
   id: string;
@@ -48,63 +48,44 @@ export default function ClearancePage() {
   const [clearanceData, setClearanceData] = useState<Record<string, ClearanceStatus[]>>({});
   const [search, setSearch] = useState('');
   const [schoolId, setSchoolId] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all');
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    const { data: userData } = await supabase
-      .from('users').select('school_id').eq('id', user.id).single();
-
+    const { data: userData } = await supabase.from('users').select('school_id').eq('id', user.id).single();
     if (!userData?.school_id) return;
     setSchoolId(userData.school_id);
 
     // Load departments
-    const { data: depts } = await supabase
-      .from('departments')
-      .select('*')
-      .eq('school_id', userData.school_id)
-      .order('clearance_order');
+    const { data: depts } = await supabase.from('departments').select('*').eq('school_id', userData.school_id).order('clearance_order');
     if (depts) setDepartments(depts);
 
-    // Load Grade 12 students
+    // Load students with clearance records (Grade 12 OR transferred)
     const { data: studs } = await supabase
       .from('students')
       .select('*')
       .eq('school_id', userData.school_id)
-      .eq('grade', '12')
+      .or('grade.eq.12,status.eq.transferred')
       .order('first_name');
+
     if (studs) {
       setStudents(studs);
-      // Load clearance for each student
       for (const s of studs) {
         const { data: clearance } = await supabase
           .from('student_clearance')
           .select('*, departments(name, clearance_order)')
           .eq('student_id', s.id);
-        if (clearance) {
-          setClearanceData(prev => ({ ...prev, [s.id]: clearance }));
-        }
+        if (clearance) setClearanceData(prev => ({ ...prev, [s.id]: clearance }));
       }
     }
   }
 
   async function initiateClearance(studentId: string) {
-    // Create clearance records for all departments
-    const records = departments.map(d => ({
-      student_id: studentId,
-      department_id: d.id,
-      status: 'pending',
-    }));
-
-    const { error } = await supabase.from('student_clearance').insert(records);
-    if (error) {
-      // Already exists, ignore
-    }
+    const records = departments.map(d => ({ student_id: studentId, department_id: d.id, status: 'pending' }));
+    await supabase.from('student_clearance').upsert(records, { onConflict: 'student_id, department_id' });
     loadData();
   }
 
@@ -116,24 +97,26 @@ export default function ClearancePage() {
     return { cleared, total: clearance.length, blocked };
   }
 
-  function getProgressColor(studentId: string) {
-    const { cleared, total } = getClearanceProgress(studentId);
-    if (total === 0) return 'bg-slate-200';
-    if (cleared === total) return 'bg-emerald-500';
-    if (cleared > 0) return 'bg-amber-500';
-    return 'bg-slate-200';
-  }
-
   const filtered = students.filter(s => {
     const name = `${s.first_name} ${s.last_name}`.toLowerCase();
-    return name.includes(search.toLowerCase()) || s.admission_number.includes(search.toLowerCase());
+    const matchesSearch = name.includes(search.toLowerCase()) || s.admission_number.includes(search.toLowerCase());
+    
+    if (filterStatus === 'cleared') {
+      const { cleared, total } = getClearanceProgress(s.id);
+      return matchesSearch && total > 0 && cleared === total;
+    }
+    if (filterStatus === 'pending') {
+      const { cleared, total } = getClearanceProgress(s.id);
+      return matchesSearch && (total === 0 || cleared < total);
+    }
+    return matchesSearch;
   });
 
   return (
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Clearance</h1>
-        <p className="text-slate-500 mt-1">Grade 12 student clearance workflow</p>
+        <p className="text-slate-500 mt-1">Grade 12 & Transferred Students · {students.length} students</p>
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -141,12 +124,12 @@ export default function ClearancePage() {
           <div className="flex items-center gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search Grade 12 students..."
-                className="pl-10"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+              <Input placeholder="Search students..." className="pl-10" value={search} onChange={(e) => setSearch(e.target.value)} />
+            </div>
+            <div className="flex gap-2">
+              <Badge className={`cursor-pointer px-3 py-1 ${filterStatus === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100'}`} onClick={() => setFilterStatus('all')}>All</Badge>
+              <Badge className={`cursor-pointer px-3 py-1 ${filterStatus === 'pending' ? 'bg-amber-600 text-white' : 'bg-slate-100'}`} onClick={() => setFilterStatus('pending')}>Pending</Badge>
+              <Badge className={`cursor-pointer px-3 py-1 ${filterStatus === 'cleared' ? 'bg-emerald-600 text-white' : 'bg-slate-100'}`} onClick={() => setFilterStatus('cleared')}>Cleared</Badge>
             </div>
           </div>
         </CardHeader>
@@ -156,6 +139,8 @@ export default function ClearancePage() {
               <TableRow>
                 <TableHead>Student</TableHead>
                 <TableHead>Admission No.</TableHead>
+                <TableHead>Grade</TableHead>
+                <TableHead>Type</TableHead>
                 <TableHead>Progress</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Action</TableHead>
@@ -163,11 +148,7 @@ export default function ClearancePage() {
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center text-slate-500 py-8">
-                    No Grade 12 students found.
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} className="text-center text-slate-500 py-8">No students found.</TableCell></TableRow>
               ) : (
                 filtered.map((s) => {
                   const { cleared, total, blocked } = getClearanceProgress(s.id);
@@ -179,52 +160,43 @@ export default function ClearancePage() {
                     <TableRow key={s.id}>
                       <TableCell>
                         <div className="flex items-center gap-3">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={s.profile_picture_url || ''} />
-                            <AvatarFallback>{s.first_name[0]}{s.last_name[0]}</AvatarFallback>
-                          </Avatar>
+                          <Avatar className="h-8 w-8"><AvatarImage src={s.profile_picture_url || ''} /><AvatarFallback>{s.first_name[0]}{s.last_name[0]}</AvatarFallback></Avatar>
                           <span className="font-medium">{s.first_name} {s.last_name}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-slate-500">{s.admission_number}</TableCell>
+                      <TableCell>Grade {s.grade}</TableCell>
+                      <TableCell>
+                        {s.status === 'transferred' ? (
+                          <Badge className="bg-orange-100 text-orange-700">Transferred</Badge>
+                        ) : (
+                          <Badge variant="outline">Grade 12</Badge>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {hasStarted ? (
                           <div className="space-y-1">
                             <div className="flex items-center gap-2">
-                              <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
-                                <div
-                                  className={`h-full rounded-full ${getProgressColor(s.id)}`}
-                                  style={{ width: `${percent}%` }}
-                                />
+                              <div className="w-20 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                <div className={`h-full rounded-full ${isComplete ? 'bg-emerald-500' : 'bg-amber-500'}`} style={{ width: `${percent}%` }} />
                               </div>
                               <span className="text-xs text-slate-500">{percent}%</span>
                             </div>
-                            <p className="text-xs text-slate-400">{cleared}/{total} cleared{blocked > 0 ? ` · ${blocked} blocked` : ''}</p>
                           </div>
                         ) : (
                           <span className="text-xs text-slate-400">Not started</span>
                         )}
                       </TableCell>
                       <TableCell>
-                        {isComplete ? (
-                          <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle className="h-3 w-3 mr-1" /> Cleared</Badge>
-                        ) : hasStarted ? (
-                          <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" /> In Progress</Badge>
-                        ) : (
-                          <Badge variant="outline">Pending</Badge>
-                        )}
+                        {isComplete ? <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle className="h-3 w-3 mr-1" />Cleared</Badge> :
+                         hasStarted ? <Badge className="bg-amber-100 text-amber-700"><Clock className="h-3 w-3 mr-1" />In Progress</Badge> :
+                         <Badge variant="outline">Pending</Badge>}
                       </TableCell>
                       <TableCell>
                         {!hasStarted ? (
-                          <Button size="sm" onClick={() => initiateClearance(s.id)} className="bg-blue-600 hover:bg-blue-700">
-                            <ClipboardCheck className="h-3 w-3 mr-1" /> Start Clearance
-                          </Button>
+                          <Button size="sm" onClick={() => initiateClearance(s.id)} className="bg-blue-600"><ClipboardCheck className="h-3 w-3 mr-1" />Start</Button>
                         ) : (
-                          <Link href={`/clearance/${s.id}`}>
-                            <Button size="sm" variant="outline">
-                              <Eye className="h-3 w-3 mr-1" /> View
-                            </Button>
-                          </Link>
+                          <Link href={`/clearance/${s.id}`}><Button size="sm" variant="outline"><Eye className="h-3 w-3 mr-1" />View</Button></Link>
                         )}
                       </TableCell>
                     </TableRow>

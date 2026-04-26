@@ -78,11 +78,11 @@ export default function BulkIdCardsPage() {
       <div className="no-print">
         <span className="text-sm font-medium text-slate-600">Filter by Grade:</span>
         <div className="flex gap-2 flex-wrap mt-2">
-          <Badge className={`cursor-pointer px-4 py-2 text-sm ${selectedGrade === 'all' ? 'bg-blue-600 text-white' : 'bg-slate-100 hover:bg-slate-200'}`} onClick={() => setSelectedGrade('all')}>
+          <Badge className={`cursor-pointer px-4 py-2 text-sm ${selectedGrade === 'all' ? 'bg-blue-600 text-white font-bold shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => setSelectedGrade('all')}>
             All Grades ({allStudents.length})
           </Badge>
           {Object.entries(allGradeCounts).sort().map(([grade, count]) => (
-            <Badge key={grade} className={`cursor-pointer px-4 py-2 text-sm ${selectedGrade === grade ? 'bg-blue-600 text-white' : 'bg-slate-100 hover:bg-slate-200'}`} onClick={() => setSelectedGrade(grade)}>
+            <Badge key={grade} className={`cursor-pointer px-4 py-2 text-sm ${selectedGrade === grade ? 'bg-blue-600 text-white font-bold shadow-md' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'}`} onClick={() => setSelectedGrade(grade)}>
               Grade {grade} ({count})
             </Badge>
           ))}

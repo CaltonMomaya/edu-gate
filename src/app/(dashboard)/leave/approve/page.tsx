@@ -14,7 +14,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, XCircle } from 'lucide-react';
+import { CheckCircle, Clock, XCircle, AlertTriangle } from 'lucide-react';
 
 interface LeaveRequest {
   id: string;
@@ -66,16 +66,18 @@ export default function ApproveLeavePage() {
   }
 
   async function markReturn(id: string) {
-    const now = new Date().toISOString();
-    
-    // Check if late
+    const now = new Date();
     const leave = leaves.find(l => l.id === id);
-    const isLate = leave ? new Date() > new Date(leave.expected_return) : false;
+    
+    if (!leave) return;
+
+    const expectedReturn = new Date(leave.expected_return);
+    const isLate = now > expectedReturn;
 
     const { error } = await supabase
       .from('leave_requests')
       .update({
-        actual_return: now,
+        actual_return: now.toISOString(),
         status: 'completed',
         is_late: isLate,
       })
@@ -84,27 +86,38 @@ export default function ApproveLeavePage() {
     if (error) {
       toast.error('Failed to update');
     } else {
-      toast.success(isLate ? 'Student returned LATE' : 'Student returned on time');
+      if (isLate) {
+        toast.error(`⚠️ LATE RETURN! Expected: ${expectedReturn.toLocaleString()}`);
+      } else {
+        toast.success(`✅ On time! Student returned before deadline`);
+      }
       loadLeaves();
     }
   }
 
-  const statusBadge = (status: string, isLate: boolean) => {
-    switch (status) {
-      case 'approved': return <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle className="h-3 w-3 mr-1" /> Approved</Badge>;
-      case 'completed': return <Badge className={isLate ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}>
-        {isLate ? <XCircle className="h-3 w-3 mr-1" /> : <CheckCircle className="h-3 w-3 mr-1" />}
-        {isLate ? 'Late Return' : 'Completed'}
-      </Badge>;
-      default: return <Badge>{status}</Badge>;
+  function getTimeStatus(leave: LeaveRequest) {
+    if (leave.status === 'completed') {
+      if (leave.is_late) {
+        return <Badge className="bg-red-100 text-red-700"><XCircle className="h-3 w-3 mr-1" /> Late</Badge>;
+      }
+      return <Badge className="bg-emerald-100 text-emerald-700"><CheckCircle className="h-3 w-3 mr-1" /> On Time</Badge>;
     }
-  };
+    if (leave.status === 'approved') {
+      const expected = new Date(leave.expected_return);
+      const now = new Date();
+      if (now > expected) {
+        return <Badge className="bg-red-100 text-red-700"><AlertTriangle className="h-3 w-3 mr-1" /> Overdue</Badge>;
+      }
+      return <Badge className="bg-blue-100 text-blue-700"><Clock className="h-3 w-3 mr-1" /> Out</Badge>;
+    }
+    return <Badge>{leave.status}</Badge>;
+  }
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-slate-800">Approve Leave & Returns</h1>
-        <p className="text-slate-500 mt-1">Track student leave and mark returns</p>
+        <h1 className="text-2xl font-bold text-slate-800">Track Returns</h1>
+        <p className="text-slate-500 mt-1">Mark student returns and check if they returned on time</p>
       </div>
 
       <Card className="border-0 shadow-sm">
@@ -117,8 +130,8 @@ export default function ApproveLeavePage() {
               <TableRow>
                 <TableHead>Student</TableHead>
                 <TableHead>Guardian</TableHead>
-                <TableHead>Left</TableHead>
                 <TableHead>Expected Return</TableHead>
+                <TableHead>Actual Return</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Action</TableHead>
               </TableRow>
@@ -133,13 +146,19 @@ export default function ApproveLeavePage() {
                   <TableRow key={l.id}>
                     <TableCell className="font-medium">{l.students?.first_name} {l.students?.last_name}</TableCell>
                     <TableCell className="text-slate-500">{l.guardians?.full_name}</TableCell>
-                    <TableCell className="text-slate-500">{new Date(l.leave_start).toLocaleDateString()}</TableCell>
-                    <TableCell className="text-slate-500">{new Date(l.expected_return).toLocaleDateString()}</TableCell>
-                    <TableCell>{statusBadge(l.status, l.is_late)}</TableCell>
+                    <TableCell className="text-slate-500">
+                      {new Date(l.expected_return).toLocaleDateString()} {new Date(l.expected_return).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
+                    </TableCell>
+                    <TableCell className="text-slate-500">
+                      {l.actual_return 
+                        ? `${new Date(l.actual_return).toLocaleDateString()} ${new Date(l.actual_return).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}`
+                        : '-'}
+                    </TableCell>
+                    <TableCell>{getTimeStatus(l)}</TableCell>
                     <TableCell>
                       {l.status === 'approved' && (
                         <Button size="sm" variant="outline" className="text-emerald-600" onClick={() => markReturn(l.id)}>
-                          <CheckCircle className="h-3 w-3 mr-1" /> Mark Return
+                          <CheckCircle className="h-3 w-3 mr-1" /> Mark Returned
                         </Button>
                       )}
                     </TableCell>

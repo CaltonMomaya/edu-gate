@@ -13,7 +13,8 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { createClient } from '@/lib/supabase/client';
-import { Menu, Bell, LogOut, User, Settings } from 'lucide-react';
+import { NotificationBell } from './notifications';
+import { Menu, LogOut, User, Settings } from 'lucide-react';
 import { ROLES } from '@/lib/auth/roles';
 import type { UserRole } from '@/types';
 
@@ -33,21 +34,11 @@ export function Header({ onMenuClick }: HeaderProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserName(user.user_metadata?.full_name || user.email || 'Admin');
-        
         const { data: userData } = await supabase
-          .from('users')
-          .select('school_id, full_name, role')
-          .eq('id', user.id)
-          .single();
-
+          .from('users').select('school_id, full_name, role').eq('id', user.id).single();
         if (userData) {
           setUserRole(userData.role as UserRole);
-          const { data: school } = await supabase
-            .from('schools')
-            .select('name')
-            .eq('id', userData.school_id)
-            .single();
-          
+          const { data: school } = await supabase.from('schools').select('name').eq('id', userData.school_id).single();
           if (school) setSchoolName(school.name);
         }
       }
@@ -67,12 +58,7 @@ export function Header({ onMenuClick }: HeaderProps) {
     <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
       <div className="flex items-center justify-between h-16 px-4 lg:px-6">
         <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="lg:hidden"
-            onClick={onMenuClick}
-          >
+          <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
             <Menu className="h-5 w-5" />
           </Button>
           <div>
@@ -82,9 +68,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" className="text-slate-500 hover:text-slate-700">
-            <Bell className="h-5 w-5" />
-          </Button>
+          <NotificationBell />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -106,12 +90,8 @@ export function Header({ onMenuClick }: HeaderProps) {
                 {roleLabel} • {schoolName}
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" /> Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" /> Settings
-              </DropdownMenuItem>
+              <DropdownMenuItem><User className="mr-2 h-4 w-4" /> Profile</DropdownMenuItem>
+              <DropdownMenuItem><Settings className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-red-600">
                 <LogOut className="mr-2 h-4 w-4" /> Sign out

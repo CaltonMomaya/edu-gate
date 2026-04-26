@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { createNotification } from '@/lib/notifications';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -61,6 +62,15 @@ export default function EditStudentPage() {
     if (depts && depts.length > 0) {
       const records = depts.map(d => ({ student_id: id, department_id: d.id, status: 'pending' }));
       await supabase.from('student_clearance').upsert(records, { onConflict: 'student_id, department_id' });
+
+      // Create notification
+      await createNotification(
+        userData.school_id,
+        'Student Transferred',
+        `${student.first_name} ${student.last_name} has been transferred. Clearance initiated for ${depts.length} departments.`,
+        'warning',
+        '/clearance'
+      );
       
       toast.success(`Transferred! ${depts.length} departments added to clearance.`);
       router.push('/clearance');

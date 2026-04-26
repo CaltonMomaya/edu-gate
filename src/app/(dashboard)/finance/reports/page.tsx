@@ -21,7 +21,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { TrendingUp, TrendingDown, DollarSign, AlertCircle, Download, Filter, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, AlertCircle, Download, Filter, ChevronDown, FileText, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface TermBreakdown {
@@ -57,7 +57,7 @@ export default function ReportsPage() {
   const [filteredReport, setFilteredReport] = useState<StudentReport[]>([]);
   const [summary, setSummary] = useState({ 
     totalCharged: 0, totalPaid: 0, totalOwed: 0, totalCredit: 0,
-    term1Owed: 0, term2Owed: 0, term3Owed: 0,
+    term1Owed: 0, term2Owed: 0, term3Owed: 0, schoolName: '',
   });
   const [gradeFilter, setGradeFilter] = useState('all');
   const [balanceFilter, setBalanceFilter] = useState('all');
@@ -77,7 +77,11 @@ export default function ReportsPage() {
     setSchoolId(userData.school_id);
     const sid = userData.school_id;
 
-    const { data: feeData } = await supabase.from('fee_structures').select('grade, amount, term').eq('school_id', sid);
+    // Get school name
+    const { data: school } = await supabase.from('schools').select('name').eq('id', sid).single();
+    const schoolName = school?.name || 'School';
+
+    const { data: feeData } = await supabase.from('fee_structures').select('grade, amount, term, name').eq('school_id', sid);
     const gradeTermCharged: Record<string, Record<string, number>> = {};
     if (feeData) {
       feeData.forEach(f => {
@@ -88,7 +92,7 @@ export default function ReportsPage() {
 
     let studentQuery = supabase.from('students').select('id, first_name, last_name, admission_number, grade, stream, house').eq('school_id', sid).eq('status', 'active');
     if (gradeFilter !== 'all') studentQuery = studentQuery.eq('grade', gradeFilter);
-    const { data: students } = await studentQuery.order('first_name');
+    const { data: students } = await studentQuery.order('grade').order('first_name');
     if (!students) { setIsLoading(false); return; }
 
     const reportData: StudentReport[] = [];
@@ -132,6 +136,7 @@ export default function ReportsPage() {
       term1Owed: reportData.filter(r => r.term1.balance > 0).reduce((s, r) => s + r.term1.balance, 0),
       term2Owed: reportData.filter(r => r.term2.balance > 0).reduce((s, r) => s + r.term2.balance, 0),
       term3Owed: reportData.filter(r => r.term3.balance > 0).reduce((s, r) => s + r.term3.balance, 0),
+      schoolName,
     });
     setIsLoading(false);
   }
@@ -158,8 +163,80 @@ export default function ReportsPage() {
     a.download = `fee-report-${label}-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    toast.success(`${label} report exported! (${dataToExport.length} students)`);
+    toast.success(`${label} exported! (${dataToExport.length} students)`);
   }
+
+  // Generate printable fee structure per grade
+  function printGradeStructure(grade: string) {
+    const gradeStudents = report.filter(r => r.grade === grade);
+    const gradeTotal = gradeStudents.reduce((s, r) => s + r.totalCharged, 0);
+    const gradePaid = gradeStudents.reduce((s, r) => s + r.totalPaid, 0);
+    const gradeOwed = gradeStudents.filter(r => r.totalBalance > 0).reduce((s, r) => s + r.totalBalance, 0);
+
+    const printWindow = window.open('', '_blank', 'width=900,height=700');
+    if (!printWindow) return;
+
+    const html = `
+      <html>
+      <head><title>Grade ${grade} - Fee Structure</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 10px; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .summary { display: flex; gap: 20px; margin-bottom: 20px; }
+        .summary-box { flex: 1; padding: 10px; border: 1px solid #ddd; text-align: center; border-radius: 8px; }
+        .summary-box h3 { margin: 0; font-size: 14px; color: #666; }
+        .summary-box p { margin: 5px 0 0; font-size: 18px; font-weight: bold; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th { background: #f8f8f8; padding: 8px; text-align: left; border-bottom: 2px solid #333; }
+        td { padding: 6px 8px; border-bottom: 1px solid #eee; }
+        .owes { color: #dc2626; font-weight: bold; }
+        .over { color: #059669; }
+        .cleared { color: #666; }
+        .footer { margin-top: 20px; text-align: center; font-size: 11px; color: #999; }
+        @media print { body { padding: 0; } }
+      </style></head>
+      <body>
+        <div class="header">
+          <h1>${summary.schoolName}</h1>
+          <p>Grade ${grade} - Fee Structure & Balances</p>
+          <p>Generated: ${new Date().toLocaleDateString()}</p>
+        </div>
+        <div class="summary">
+          <div class="summary-box"><h3>Total Charged</h3><p>KES ${gradeTotal.toLocaleString()}</p></div>
+          <div class="summary-box"><h3>Total Paid</h3><p>KES ${gradePaid.toLocaleString()}</p></div>
+          <div class="summary-box"><h3>Outstanding</h3><p style="color:#dc2626">KES ${gradeOwed.toLocaleString()}</p></div>
+          <div class="summary-box"><h3>Students</h3><p>${gradeStudents.length}</p></div>
+        </div>
+        <table>
+          <thead><tr><th>#</th><th>Student</th><th>Adm No</th><th>Stream</th><th>House</th><th>T1 Bal</th><th>T2 Bal</th><th>T3 Bal</th><th>Total Balance</th><th>Status</th></tr></thead>
+          <tbody>
+            ${gradeStudents.map((r, i) => `
+              <tr>
+                <td>${i + 1}</td>
+                <td>${r.name}</td>
+                <td>${r.admission}</td>
+                <td>${r.stream}</td>
+                <td>${r.house}</td>
+                <td class="${r.term1.balance > 0 ? 'owes' : r.term1.balance < 0 ? 'over' : 'cleared'}">KES ${r.term1.balance.toLocaleString()}</td>
+                <td class="${r.term2.balance > 0 ? 'owes' : r.term2.balance < 0 ? 'over' : 'cleared'}">KES ${r.term2.balance.toLocaleString()}</td>
+                <td class="${r.term3.balance > 0 ? 'owes' : r.term3.balance < 0 ? 'over' : 'cleared'}">KES ${r.term3.balance.toLocaleString()}</td>
+                <td class="${r.totalBalance > 0 ? 'owes' : r.totalBalance < 0 ? 'over' : 'cleared'}">KES ${r.totalBalance.toLocaleString()}</td>
+                <td>${r.totalBalance > 0 ? 'OWES' : r.totalBalance < 0 ? 'OVERPAID' : 'CLEARED'}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+        <div class="footer">Generated by EDU GATE · ${new Date().toLocaleString()}</div>
+      </body></html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+  }
+
+  // Group students by grade for summary cards
+  const gradeGroups = { '10': report.filter(r => r.grade === '10'), '11': report.filter(r => r.grade === '11'), '12': report.filter(r => r.grade === '12') };
 
   const owingStudents = report.filter(r => r.totalBalance > 0);
   const overpaidStudents = report.filter(r => r.totalBalance < 0);
@@ -182,7 +259,7 @@ export default function ReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Finance Reports</h1>
-          <p className="text-slate-500 mt-1">Overpayments auto-carry to next term</p>
+          <p className="text-slate-500 mt-1">{summary.schoolName} · Overpayments auto-carry to next term</p>
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -191,25 +268,42 @@ export default function ReportsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-64">
-            <DropdownMenuItem onClick={() => exportCSV(report, 'all-students')}>
-              📋 All Students ({report.length})
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportCSV(owingStudents, 'arrears')}>
-              🔴 With Arrears ({owingStudents.length})
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportCSV(overpaidStudents, 'overpaid')}>
-              🟢 Overpaid ({overpaidStudents.length})
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportCSV(clearedStudents, 'cleared')}>
-              ✅ Cleared ({clearedStudents.length})
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => exportCSV(filteredReport, 'current-filter')}>
-              📌 Current Filter ({filteredReport.length})
-            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportCSV(report, 'all-students')}>📋 All Students ({report.length})</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportCSV(owingStudents, 'arrears')}>🔴 Arrears ({owingStudents.length})</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportCSV(overpaidStudents, 'overpaid')}>🟢 Overpaid ({overpaidStudents.length})</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportCSV(clearedStudents, 'cleared')}>✅ Cleared ({clearedStudents.length})</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => exportCSV(filteredReport, 'current-filter')}>📌 Current View ({filteredReport.length})</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
+      {/* Grade Summary Cards with Print */}
+      <div className="grid grid-cols-3 gap-4">
+        {(['10', '11', '12'] as const).map(grade => {
+          const students = gradeGroups[grade];
+          const totalOwed = students.filter(r => r.totalBalance > 0).reduce((s, r) => s + r.totalBalance, 0);
+          const totalPaid = students.reduce((s, r) => s + r.totalPaid, 0);
+          return (
+            <Card key={grade} className="border-0 shadow-sm bg-gradient-to-br from-white to-slate-50">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-bold text-lg">Grade {grade}</h3>
+                  <Button variant="outline" size="sm" onClick={() => printGradeStructure(grade)}>
+                    <Printer className="h-3 w-3 mr-1" /> Print
+                  </Button>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-slate-500">Students</span><span className="font-bold">{students.length}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Total Paid</span><span className="font-bold text-emerald-600">KES {totalPaid.toLocaleString()}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Arrears</span><span className="font-bold text-red-600">KES {totalOwed.toLocaleString()}</span></div>
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-0 shadow-sm"><CardContent className="p-4 text-center"><DollarSign className="h-6 w-6 mx-auto text-blue-600 mb-1" /><p className="text-2xl font-bold">KES {summary.totalCharged.toLocaleString()}</p><p className="text-xs text-slate-500">Total Charged</p></CardContent></Card>
         <Card className="border-0 shadow-sm"><CardContent className="p-4 text-center"><TrendingUp className="h-6 w-6 mx-auto text-emerald-600 mb-1" /><p className="text-2xl font-bold">KES {summary.totalPaid.toLocaleString()}</p><p className="text-xs text-slate-500">Total Paid</p></CardContent></Card>
@@ -217,12 +311,14 @@ export default function ReportsPage() {
         <Card className="border-0 shadow-sm"><CardContent className="p-4 text-center"><TrendingDown className="h-6 w-6 mx-auto text-purple-600 mb-1" /><p className="text-2xl font-bold">KES {summary.totalCredit.toLocaleString()}</p><p className="text-xs text-slate-500">Overpaid</p></CardContent></Card>
       </div>
 
+      {/* Term Arrears */}
       <div className="grid grid-cols-3 gap-4">
         <Card className="border-0 shadow-sm bg-orange-50"><CardContent className="p-4 text-center"><p className="text-lg font-bold text-orange-700">KES {summary.term1Owed.toLocaleString()}</p><p className="text-xs text-orange-600">Term 1 Arrears</p></CardContent></Card>
         <Card className="border-0 shadow-sm bg-amber-50"><CardContent className="p-4 text-center"><p className="text-lg font-bold text-amber-700">KES {summary.term2Owed.toLocaleString()}</p><p className="text-xs text-amber-600">Term 2 Arrears</p></CardContent></Card>
         <Card className="border-0 shadow-sm bg-yellow-50"><CardContent className="p-4 text-center"><p className="text-lg font-bold text-yellow-700">KES {summary.term3Owed.toLocaleString()}</p><p className="text-xs text-yellow-600">Term 3 Arrears</p></CardContent></Card>
       </div>
 
+      {/* Table */}
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <div className="flex items-center justify-between gap-4 flex-wrap">

@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import {
   GraduationCap,
+  TrendingUp,
   LayoutDashboard,
   Users,
   BookOpen,
@@ -33,6 +34,7 @@ interface SidebarProps {
 
 const navigation = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard },
+  { name: 'Analytics', href: '/analytics', icon: TrendingUp },
   { name: 'Students', href: '/students', icon: Users },
   { name: 'Teachers & Staff', href: '/teachers', icon: UserPlus },
   { name: 'Classes & Streams', href: '/classes', icon: Home },
@@ -64,36 +66,20 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
 
   const handleNavClick = () => {
-    // Close mobile sidebar when a link is clicked
-    if (window.innerWidth < 1024) {
-      onClose();
-    }
+    if (window.innerWidth < 1024) onClose();
   };
 
   const NavContent = () => (
     <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
       {navigation.map((item, index) => {
-        if (item.separator) {
-          return <Separator key={`sep-${index}`} className="my-3 bg-slate-700/50" />;
-        }
-
+        if (item.separator) return <Separator key={`sep-${index}`} className="my-3 bg-slate-700/50" />;
         const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-        
         return (
-          <Link
-            key={item.name}
-            href={item.href}
-            onClick={handleNavClick}
-            className={cn(
-              'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
+          <Link key={item.name} href={item.href} onClick={handleNavClick}
+            className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
               item.indent && 'ml-4',
-              isActive
-                ? 'bg-gradient-to-r from-blue-600/30 to-emerald-600/30 text-white shadow-sm'
-                : 'text-slate-300 hover:bg-slate-700/50 hover:text-white'
-            )}
-          >
-            {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}
-            {item.name}
+              isActive ? 'bg-gradient-to-r from-blue-600/30 to-emerald-600/30 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white')}>
+            {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}{item.name}
           </Link>
         );
       })}
@@ -102,64 +88,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const BrandLogo = () => (
     <Link href="/overview" className="flex items-center gap-2" onClick={handleNavClick}>
-      <div className="bg-gradient-to-br from-blue-500 to-emerald-500 p-2 rounded-lg">
-        <GraduationCap className="h-5 w-5 text-white" />
-      </div>
-      <span className="text-lg font-bold">
-        <span className="text-blue-400">EDU</span>
-        <span className="text-emerald-400"> GATE</span>
-      </span>
+      <div className="bg-gradient-to-br from-blue-500 to-emerald-500 p-2 rounded-lg"><GraduationCap className="h-5 w-5 text-white" /></div>
+      <span className="text-lg font-bold"><span className="text-blue-400">EDU</span><span className="text-emerald-400"> GATE</span></span>
     </Link>
   );
 
   const sidebarContent = (
     <div className="flex h-full flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white">
-      {/* Logo */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-slate-700/50">
         <BrandLogo />
-        {/* Mobile close button - always white */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="lg:hidden text-white hover:text-slate-200 hover:bg-slate-700"
-          onClick={onClose}
-        >
-          <X className="h-5 w-5" />
-        </Button>
+        <Button variant="ghost" size="icon" className="lg:hidden text-white hover:text-slate-200 hover:bg-slate-700" onClick={onClose}><X className="h-5 w-5" /></Button>
       </div>
-
       <NavContent />
-
-      {/* Footer */}
-      <div className="p-4 border-t border-slate-700/50">
-        <div className="text-xs text-slate-500 text-center">
-          © 2026 EDU GATE
-        </div>
-      </div>
+      <div className="p-4 border-t border-slate-700/50"><div className="text-xs text-slate-500 text-center">© 2026 EDU GATE</div></div>
     </div>
   );
 
   return (
     <>
-      {/* Mobile Sidebar as Sheet */}
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent 
-          side="left" 
-          className="p-0 w-72 bg-slate-900 border-r-0"
-          onPointerDownOutside={onClose}
-          onEscapeKeyDown={onClose}
-        >
-          <VisuallyHidden>
-            <SheetTitle>Navigation Menu</SheetTitle>
-          </VisuallyHidden>
+        <SheetContent side="left" className="p-0 w-72 bg-slate-900 border-r-0" onPointerDownOutside={onClose} onEscapeKeyDown={onClose}>
+          <VisuallyHidden><SheetTitle>Navigation Menu</SheetTitle></VisuallyHidden>
           {sidebarContent}
         </SheetContent>
       </Sheet>
-
-      {/* Desktop Sidebar - always visible, no sheet */}
-      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64">
-        {sidebarContent}
-      </div>
+      <div className="hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 lg:w-64">{sidebarContent}</div>
     </>
   );
 }

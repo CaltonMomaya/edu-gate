@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Construction } from 'lucide-react';
 
-export default function Black BookPage() {
+export default function BlackBookPage() {
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -16,7 +16,7 @@ export default function Black BookPage() {
           <Construction className="h-16 w-16 text-amber-500 mb-4" />
           <CardTitle className="text-xl mb-2">Under Development</CardTitle>
           <CardDescription className="text-center max-w-md">
-            This feature is being built. We'll notify you when it's ready for use.
+            This feature is being built. We&apos;ll notify you when it&apos;s ready for use.
           </CardDescription>
         </CardContent>
       </Card>

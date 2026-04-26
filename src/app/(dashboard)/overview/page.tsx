@@ -29,7 +29,6 @@ export default function OverviewPage() {
 
       if (!userData?.school_id) return;
 
-      // Load school name
       const { data: school } = await supabase
         .from('schools')
         .select('name')
@@ -37,7 +36,6 @@ export default function OverviewPage() {
         .single();
       if (school) setSchoolName(school.name);
 
-      // Load student counts
       const { data: students } = await supabase
         .from('students')
         .select('grade, status')
@@ -65,7 +63,6 @@ export default function OverviewPage() {
         <p className="text-slate-500 mt-1">Here&apos;s what&apos;s happening at your school today.</p>
       </div>
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -95,14 +92,14 @@ export default function OverviewPage() {
 
         <Card className="border-0 shadow-sm hover:shadow-md transition-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-slate-500">Grade 12</CardTitle>
+            <CardTitle className="text-sm font-medium text-slate-500">Fee Collection</CardTitle>
             <div className="p-2 bg-amber-100 rounded-lg">
-              <TrendingUp className="h-4 w-4 text-amber-600" />
+              <DollarSign className="h-4 w-4 text-amber-600" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-slate-800">{stats.grade12}</div>
-            <p className="text-xs text-slate-500 mt-1">Final year students</p>
+            <div className="text-2xl font-bold text-slate-800">KES 0</div>
+            <p className="text-xs text-slate-500 mt-1">This term</p>
           </CardContent>
         </Card>
 
@@ -120,7 +117,6 @@ export default function OverviewPage() {
         </Card>
       </div>
 
-      {/* Grade Breakdown */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <Card className="border-0 shadow-sm">
           <CardHeader>
@@ -151,7 +147,6 @@ export default function OverviewPage() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle>Quick Actions</CardTitle>
@@ -163,8 +158,8 @@ export default function OverviewPage() {
           <a href="/finance/fees" className="inline-flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-medium hover:bg-emerald-700 transition-colors">
             <DollarSign className="h-4 w-4" /> Manage Fees
           </a>
-          <a href="/discipline" className="inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 transition-colors">
-            <AlertCircle className="h-4 w-4" /> Discipline
+          <a href="/teachers" className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg text-sm font-medium hover:bg-purple-700 transition-colors">
+            <Users className="h-4 w-4" /> Add Staff
           </a>
         </CardContent>
       </Card>

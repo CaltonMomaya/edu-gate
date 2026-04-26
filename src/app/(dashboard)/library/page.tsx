@@ -7,6 +7,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Table,
   TableBody,
   TableCell,
@@ -15,84 +22,282 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { BookOpen, Search, Loader2, BookPlus, BookCheck, AlertCircle } from 'lucide-react';
+import { BookOpen, BookPlus, BookCheck, Search, Loader2, AlertCircle, Trash2, Calendar } from 'lucide-react';
 
-// We'll add library_books table later. For now, this is the dashboard placeholder.
+interface Book {
+  id: string;
+  ref_no: string;
+  title: string;
+  author: string;
+  isbn: string;
+  category: string;
+  quantity: number;
+  available: number;
+}
+
+interface IssuedBook {
+  id: string;
+  book_id: string;
+  student_id: string;
+  issued_date: string;
+  due_date: string;
+  return_date: string;
+  status: string;
+  fine_amount: number;
+  library_books: { title: string; ref_no: string };
+  students: { first_name: string; last_name: string; admission_number: string; grade: string; profile_picture_url: string };
+}
+
 export default function LibraryPage() {
+  const supabase = createClient();
+  const [books, setBooks] = useState<Book[]>([]);
+  const [issued, setIssued] = useState<IssuedBook[]>([]);
+  const [schoolId, setSchoolId] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [tab, setTab] = useState<'inventory' | 'issued' | 'history'>('inventory');
+  const [searchBook, setSearchBook] = useState('');
+  const [searchIssued, setSearchIssued] = useState('');
+  const [bookSearch, setBookSearch] = useState('');
+
+  const [title, setTitle] = useState('');
+  const [author, setAuthor] = useState('');
+  const [isbn, setIsbn] = useState('');
+  const [category, setCategory] = useState('General');
+  const [quantity, setQuantity] = useState('1');
+
+  const [studentSearch, setStudentSearch] = useState('');
+  const [selectedBook, setSelectedBook] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [dueDate, setDueDate] = useState('');
+  const [students, setStudents] = useState<any[]>([]);
+  const [showStudentResults, setShowStudentResults] = useState(false);
+  const [showBookResults, setShowBookResults] = useState(false);
+
+  useEffect(() => { loadData(); }, []);
+
+  async function loadData() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: userData } = await supabase.from('users').select('school_id').eq('id', user.id).single();
+    if (!userData?.school_id) return;
+    setSchoolId(userData.school_id);
+
+    const { data: bookData } = await supabase.from('library_books').select('*').eq('school_id', userData.school_id).order('title');
+    if (bookData) setBooks(bookData);
+
+    const { data: issueData } = await supabase
+      .from('library_issued')
+      .select('*, library_books(title, ref_no), students(first_name, last_name, admission_number, grade, profile_picture_url)')
+      .eq('school_id', userData.school_id)
+      .order('issued_date', { ascending: false })
+      .limit(100);
+    if (issueData) setIssued(issueData);
+  }
+
+  const filteredBooksForIssue = books.filter(b => {
+    if (!bookSearch) return b.available > 0;
+    const q = bookSearch.toLowerCase();
+    return (b.available > 0) && (b.title.toLowerCase().includes(q) || (b.ref_no && b.ref_no.toLowerCase().includes(q)));
+  });
+
+  async function addBook(e: React.FormEvent) {
+    e.preventDefault();
+    if (!title) return;
+    const qty = parseInt(quantity) || 1;
+    const refNo = 'BK-' + new Date().getFullYear() + '-' + String(books.length + 1).padStart(4, '0');
+    const { error } = await supabase.from('library_books').insert({
+      school_id: schoolId, ref_no: refNo, title, author, isbn, category, quantity: qty, available: qty,
+    });
+    if (error) toast.error('Failed');
+    else { toast.success(`${title} added (${refNo})`); setTitle(''); setAuthor(''); setIsbn(''); setQuantity('1'); loadData(); }
+  }
+
+  async function deleteBook(id: string) {
+    await supabase.from('library_books').delete().eq('id', id);
+    toast.success('Deleted'); loadData();
+  }
+
+  async function searchStudents(query: string) {
+    setStudentSearch(query);
+    if (query.length < 2) { setStudents([]); return; }
+    const { data } = await supabase.from('students')
+      .select('id, first_name, last_name, admission_number, grade, profile_picture_url')
+      .eq('school_id', schoolId).eq('status', 'active')
+      .or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%,admission_number.ilike.%${query}%`).limit(10);
+    if (data) setStudents(data);
+  }
+
+  async function issueBook(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedBook || !selectedStudent || !dueDate) { toast.error('Fill all fields'); return; }
+    const book = books.find(b => b.id === selectedBook);
+    if (!book || book.available <= 0) { toast.error('Not available'); return; }
+
+    setIsLoading(true);
+    const { error } = await supabase.from('library_issued').insert({
+      school_id: schoolId, book_id: selectedBook, student_id: selectedStudent.id, due_date: dueDate,
+    });
+    if (!error) {
+      await supabase.from('library_books').update({ available: book.available - 1 }).eq('id', selectedBook);
+      toast.success(`Issued to ${selectedStudent.first_name}`);
+      setSelectedBook(''); setSelectedStudent(null); setStudentSearch(''); setDueDate(''); setBookSearch('');
+      loadData();
+    } else toast.error('Failed');
+    setIsLoading(false);
+  }
+
+  async function returnBook(issueId: string, bookId: string) {
+    const fine = prompt('Fine amount (KES, 0 if none):', '0');
+    const fineVal = fine ? parseFloat(fine) : 0;
+    const { error } = await supabase.from('library_issued').update({
+      status: 'returned', return_date: new Date().toISOString().split('T')[0], fine_amount: fineVal,
+    }).eq('id', issueId);
+    if (!error) {
+      const book = books.find(b => b.id === bookId);
+      if (book) await supabase.from('library_books').update({ available: book.available + 1 }).eq('id', bookId);
+      toast.success(fineVal > 0 ? `Returned with KES ${fineVal} fine` : 'Returned');
+      loadData();
+    }
+  }
+
+  async function markLost(issueId: string) {
+    if (!confirm('Mark as lost? KES 500 fine will be recorded.')) return;
+    const { error } = await supabase.from('library_issued').update({ status: 'lost', fine_amount: 500 }).eq('id', issueId);
+    if (!error) { toast.error('Marked as lost'); loadData(); }
+  }
+
+  const filteredBooks = books.filter(b => b.title.toLowerCase().includes(searchBook.toLowerCase()) || (b.ref_no && b.ref_no.includes(searchBook)));
+  const filteredIssued = issued.filter(i => {
+    const q = searchIssued.toLowerCase();
+    return (i.students?.first_name + ' ' + i.students?.last_name).toLowerCase().includes(q) ||
+      i.library_books?.title?.toLowerCase().includes(q) || (i.library_books?.ref_no?.includes(q));
+  });
+  const activeIssues = issued.filter(i => i.status === 'issued');
+  const overdueBooks = issued.filter(i => i.status === 'issued' && new Date(i.due_date) < new Date());
+
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Library</h1>
-        <p className="text-slate-500 mt-1">Manage books, issue/return, and track fines</p>
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-slate-800">Library</h1><p className="text-slate-500">{books.length} books · {activeIssues.length} issued · {overdueBooks.length} overdue</p></div>
+        <div className="flex gap-2">
+          <Button variant={tab === 'inventory' ? 'default' : 'outline'} onClick={() => setTab('inventory')}><BookOpen className="mr-2 h-4 w-4" /> Books</Button>
+          <Button variant={tab === 'issued' ? 'default' : 'outline'} onClick={() => setTab('issued')}><BookCheck className="mr-2 h-4 w-4" /> Issued ({activeIssues.length})</Button>
+          <Button variant={tab === 'history' ? 'default' : 'outline'} onClick={() => setTab('history')}>📋 History</Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <div className="p-3 bg-blue-100 rounded-xl w-fit mb-3">
-              <BookPlus className="h-6 w-6 text-blue-600" />
-            </div>
-            <CardTitle>Issue Book</CardTitle>
-            <p className="text-sm text-slate-500">Issue a book to a student</p>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-slate-400">Coming in next update</p>
-          </CardContent>
-        </Card>
+      {tab === 'inventory' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader><CardTitle><BookPlus className="h-5 w-5 inline mr-2" />Add Book</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={addBook} className="space-y-3">
+                <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Title *" />
+                <Input value={author} onChange={e => setAuthor(e.target.value)} placeholder="Author" />
+                <Input value={isbn} onChange={e => setIsbn(e.target.value)} placeholder="ISBN" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="General">General</SelectItem>
+                      <SelectItem value="Textbook">Textbook</SelectItem>
+                      <SelectItem value="Reference">Reference</SelectItem>
+                      <SelectItem value="Set Books">Set Books</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min="1" placeholder="Qty" />
+                </div>
+                <Button type="submit" className="w-full">Add Book</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2">
+            <CardHeader><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search books..." className="pl-10" value={searchBook} onChange={e => setSearchBook(e.target.value)} /></div></CardHeader>
+            <CardContent>
+              <Table><TableHeader><TableRow><TableHead>Ref</TableHead><TableHead>Title</TableHead><TableHead>Author</TableHead><TableHead>Available</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                <TableBody>{filteredBooks.map(b => (
+                  <TableRow key={b.id}><TableCell><Badge variant="outline" className="font-mono">{b.ref_no || '-'}</Badge></TableCell><TableCell className="font-medium">{b.title}</TableCell><TableCell className="text-slate-500">{b.author || '-'}</TableCell><TableCell><Badge className={b.available > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{b.available}/{b.quantity}</Badge></TableCell><TableCell><Button variant="ghost" size="icon" className="text-red-500" onClick={() => deleteBook(b.id)}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
+                ))}</TableBody></Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <div className="p-3 bg-emerald-100 rounded-xl w-fit mb-3">
-              <BookCheck className="h-6 w-6 text-emerald-600" />
-            </div>
-            <CardTitle>Return Book</CardTitle>
-            <p className="text-sm text-slate-500">Process book returns</p>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-slate-400">Coming in next update</p>
-          </CardContent>
-        </Card>
+      {tab === 'issued' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader><CardTitle><BookCheck className="h-5 w-5 inline mr-2" />Issue Book</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={issueBook} className="space-y-3">
+                {/* Searchable Book Selector */}
+                <div className="space-y-1 relative"><Label>Book *</Label>
+                  <Input placeholder="Search book by title or ref..." value={bookSearch} onChange={e => { setBookSearch(e.target.value); setShowBookResults(true); }} onFocus={() => setShowBookResults(true)} />
+                  {showBookResults && bookSearch && (
+                    <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">
+                      {filteredBooksForIssue.length === 0 ? <p className="p-3 text-sm text-slate-500">No books found</p> :
+                        filteredBooksForIssue.map(b => (
+                          <button key={b.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b" onClick={() => { setSelectedBook(b.id); setBookSearch(`${b.ref_no} - ${b.title}`); setShowBookResults(false); }}>
+                            <span className="font-medium">{b.ref_no}</span> - {b.title} <Badge className="ml-2 text-xs">{b.available} left</Badge>
+                          </button>
+                        ))
+                      }
+                    </div>
+                  )}
+                </div>
 
-        <Card className="border-0 shadow-sm">
-          <CardHeader>
-            <div className="p-3 bg-amber-100 rounded-xl w-fit mb-3">
-              <AlertCircle className="h-6 w-6 text-amber-600" />
-            </div>
-            <CardTitle>Fines & Overdue</CardTitle>
-            <p className="text-sm text-slate-500">Track unpaid library fines</p>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-slate-400">Coming in next update</p>
-          </CardContent>
-        </Card>
-      </div>
+                {/* Searchable Student Selector */}
+                <div className="space-y-1 relative"><Label>Student *</Label>
+                  <Input placeholder="Search student..." value={studentSearch} onChange={e => { searchStudents(e.target.value); setShowStudentResults(true); }} onFocus={() => setShowStudentResults(true)} />
+                  {showStudentResults && students.length > 0 && (
+                    <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                      {students.map(s => (
+                        <button key={s.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 flex items-center gap-2" onClick={() => { setSelectedStudent(s); setStudentSearch(`${s.first_name} ${s.last_name}`); setShowStudentResults(false); }}>
+                          <Avatar className="h-6 w-6"><AvatarFallback className="text-xs">{s.first_name[0]}{s.last_name[0]}</AvatarFallback></Avatar>
+                          <span className="text-sm">{s.first_name} {s.last_name} · {s.admission_number} · G{s.grade}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedStudent && <p className="text-xs text-emerald-600 mt-1">✅ {selectedStudent.first_name} {selectedStudent.last_name}</p>}
+                </div>
 
-      <Card className="border-0 shadow-sm">
-        <CardHeader>
-          <CardTitle>Library Dashboard</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 gap-4 text-center">
-            <div>
-              <p className="text-3xl font-bold text-blue-600">0</p>
-              <p className="text-xs text-slate-500">Books Issued</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-emerald-600">0</p>
-              <p className="text-xs text-slate-500">Returned Today</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-amber-600">0</p>
-              <p className="text-xs text-slate-500">Overdue</p>
-            </div>
-            <div>
-              <p className="text-3xl font-bold text-red-600">KES 0</p>
-              <p className="text-xs text-slate-500">Fines Pending</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+                <div className="space-y-1"><Label><Calendar className="h-3 w-3 inline mr-1" />Due Date *</Label><Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} /></div>
+                <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Issue Book'}</Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          <Card className="lg:col-span-2">
+            <CardHeader><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search issued..." className="pl-10" value={searchIssued} onChange={e => setSearchIssued(e.target.value)} /></div></CardHeader>
+            <CardContent>
+              <Table><TableHeader><TableRow><TableHead>Book</TableHead><TableHead>Student</TableHead><TableHead>Due</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {filteredIssued.filter(i => i.status === 'issued').map(i => (
+                    <TableRow key={i.id} className={new Date(i.due_date) < new Date() ? 'bg-red-50' : ''}>
+                      <TableCell><p className="font-medium text-sm">{i.library_books?.title}</p><p className="text-xs text-slate-400">{i.library_books?.ref_no}</p></TableCell>
+                      <TableCell><p className="text-sm">{i.students?.first_name} {i.students?.last_name}</p><p className="text-xs text-slate-400">G{i.students?.grade}</p></TableCell>
+                      <TableCell className="text-xs">{i.due_date}</TableCell>
+                      <TableCell>{new Date(i.due_date) < new Date() ? <Badge className="bg-red-100 text-red-700"><AlertCircle className="h-3 w-3 mr-1" />Overdue</Badge> : <Badge className="bg-blue-100">Issued</Badge>}</TableCell>
+                      <TableCell><div className="flex gap-1"><Button size="sm" variant="outline" className="text-emerald-600 text-xs" onClick={() => returnBook(i.id, i.book_id)}>Return</Button><Button size="sm" variant="outline" className="text-red-600 text-xs" onClick={() => markLost(i.id)}>Lost</Button></div></TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody></Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {tab === 'history' && (
+        <Card><CardHeader><CardTitle>History</CardTitle></CardHeader><CardContent>
+          <Table><TableHeader><TableRow><TableHead>Book</TableHead><TableHead>Student</TableHead><TableHead>Issued</TableHead><TableHead>Returned</TableHead><TableHead>Status</TableHead><TableHead>Fine</TableHead></TableRow></TableHeader>
+            <TableBody>{issued.map(i => (
+              <TableRow key={i.id}><TableCell><span className="text-sm">{i.library_books?.title}</span><br /><span className="text-xs text-slate-400">{i.library_books?.ref_no}</span></TableCell><TableCell>{i.students?.first_name} {i.students?.last_name}</TableCell><TableCell className="text-xs">{i.issued_date}</TableCell><TableCell className="text-xs">{i.return_date || '-'}</TableCell><TableCell><Badge className={i.status === 'returned' ? 'bg-emerald-100' : 'bg-red-100'}>{i.status}</Badge></TableCell><TableCell>{i.fine_amount > 0 ? <span className="text-red-600 font-medium">KES {i.fine_amount}</span> : '-'}</TableCell></TableRow>
+            ))}</TableBody></Table>
+        </CardContent></Card>
+      )}
     </div>
   );
 }

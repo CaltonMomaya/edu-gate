@@ -56,12 +56,10 @@ export default function PaymentsPage() {
   const [schoolId, setSchoolId] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  // Student search
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [showResults, setShowResults] = useState(false);
 
-  // Payment form
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [transRef, setTransRef] = useState('');
@@ -100,7 +98,6 @@ export default function PaymentsPage() {
     if (paymentsData) setPayments(paymentsData);
   }
 
-  // Filter students as user types
   const filteredStudents = students.filter(s => {
     if (!studentSearch) return false;
     const query = studentSearch.toLowerCase();
@@ -145,7 +142,7 @@ export default function PaymentsPage() {
       return;
     }
 
-    // 2. Update fee balance
+    // 2. Update fee balance - FIXED LOGIC
     const { data: existingBalance } = await supabase
       .from('student_fee_balances')
       .select('*')
@@ -154,20 +151,23 @@ export default function PaymentsPage() {
       .single();
 
     if (existingBalance) {
-      const newPaid = existingBalance.total_paid + paymentAmount;
-      const newBalance = existingBalance.total_charged - newPaid;
+      const newTotalPaid = existingBalance.total_paid + paymentAmount;
+      // Balance = Charged - Paid (positive = owes, negative = overpaid)
+      const newBalance = existingBalance.total_charged - newTotalPaid;
+      
       await supabase.from('student_fee_balances').update({
-        total_paid: newPaid,
+        total_paid: newTotalPaid,
         balance: newBalance,
         overpayment: newBalance < 0 ? Math.abs(newBalance) : 0,
       }).eq('id', existingBalance.id);
     } else {
+      // No fee structure set yet, just record payment as credit
       await supabase.from('student_fee_balances').insert({
         student_id: selectedStudent.id,
         school_id: schoolId,
         total_charged: 0,
         total_paid: paymentAmount,
-        balance: -paymentAmount,
+        balance: -paymentAmount, // Negative = credit/overpayment since nothing charged
         overpayment: paymentAmount,
         academic_year: academicYear,
       });
@@ -190,16 +190,12 @@ export default function PaymentsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Record Payment Form */}
         <Card className="border-0 shadow-sm lg:col-span-1">
           <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Plus className="h-5 w-5 text-emerald-600" /> Record Payment
-            </CardTitle>
+            <CardTitle className="text-lg flex items-center gap-2"><Plus className="h-5 w-5 text-emerald-600" /> Record Payment</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={recordPayment} className="space-y-4">
-              {/* Searchable Student Input */}
               <div className="space-y-2 relative">
                 <Label>Search Student *</Label>
                 <div className="relative">
@@ -208,28 +204,17 @@ export default function PaymentsPage() {
                     placeholder="Type name or admission number..."
                     className="pl-10"
                     value={studentSearch}
-                    onChange={(e) => {
-                      setStudentSearch(e.target.value);
-                      setSelectedStudent(null);
-                      setShowResults(true);
-                    }}
+                    onChange={(e) => { setStudentSearch(e.target.value); setSelectedStudent(null); setShowResults(true); }}
                     onFocus={() => setShowResults(true)}
                   />
                 </div>
-
-                {/* Dropdown Results */}
                 {showResults && studentSearch && !selectedStudent && (
                   <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto mt-1">
                     {filteredStudents.length === 0 ? (
                       <p className="p-3 text-sm text-slate-500">No students found</p>
                     ) : (
                       filteredStudents.slice(0, 20).map((s) => (
-                        <button
-                          key={s.id}
-                          type="button"
-                          className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b last:border-b-0"
-                          onClick={() => selectStudent(s)}
-                        >
+                        <button key={s.id} type="button" className="w-full text-left px-4 py-2.5 hover:bg-slate-50 border-b" onClick={() => selectStudent(s)}>
                           <p className="font-medium text-sm">{s.first_name} {s.last_name}</p>
                           <p className="text-xs text-slate-500">{s.admission_number} · Grade {s.grade}</p>
                         </button>
@@ -237,60 +222,27 @@ export default function PaymentsPage() {
                     )}
                   </div>
                 )}
-
-                {/* Selected Student */}
                 {selectedStudent && (
                   <div className="flex items-center justify-between bg-blue-50 p-2 rounded-lg border border-blue-200">
-                    <div>
-                      <p className="font-medium text-sm">{selectedStudent.first_name} {selectedStudent.last_name}</p>
-                      <p className="text-xs text-slate-500">{selectedStudent.admission_number} · Grade {selectedStudent.grade}</p>
-                    </div>
+                    <div><p className="font-medium text-sm">{selectedStudent.first_name} {selectedStudent.last_name}</p><p className="text-xs text-slate-500">{selectedStudent.admission_number}</p></div>
                     <button type="button" onClick={() => { setSelectedStudent(null); setStudentSearch(''); }} className="text-red-500 text-xs">Change</button>
                   </div>
                 )}
               </div>
-
-              <div className="space-y-2">
-                <Label>Amount (KES) *</Label>
-                <Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g., 15000" />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Payment Method</Label>
+              <div className="space-y-2"><Label>Amount (KES) *</Label><Input type="number" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="e.g., 15000" /></div>
+              <div className="space-y-2"><Label>Payment Method</Label>
                 <Select value={method} onValueChange={setMethod}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cash">Cash</SelectItem>
-                    <SelectItem value="mpesa">M-Pesa</SelectItem>
-                    <SelectItem value="bank_transfer">Bank Transfer</SelectItem>
-                    <SelectItem value="cheque">Cheque</SelectItem>
-                  </SelectContent>
+                  <SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="mpesa">M-Pesa</SelectItem><SelectItem value="bank_transfer">Bank Transfer</SelectItem><SelectItem value="cheque">Cheque</SelectItem></SelectContent>
                 </Select>
               </div>
-
-              <div className="space-y-2">
-                <Label>Transaction Ref (Optional)</Label>
-                <Input value={transRef} onChange={(e) => setTransRef(e.target.value)} placeholder="M-Pesa code or receipt no." />
-              </div>
-
+              <div className="space-y-2"><Label>Transaction Ref</Label><Input value={transRef} onChange={(e) => setTransRef(e.target.value)} placeholder="M-Pesa code or receipt" /></div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label>Term</Label>
-                  <Select value={term} onValueChange={setTerm}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="term1">Term 1</SelectItem>
-                      <SelectItem value="term2">Term 2</SelectItem>
-                      <SelectItem value="term3">Term 3</SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="space-y-2"><Label>Term</Label>
+                  <Select value={term} onValueChange={setTerm}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="term1">Term 1</SelectItem><SelectItem value="term2">Term 2</SelectItem><SelectItem value="term3">Term 3</SelectItem></SelectContent></Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Year</Label>
-                  <Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} />
-                </div>
+                <div className="space-y-2"><Label>Year</Label><Input value={academicYear} onChange={(e) => setAcademicYear(e.target.value)} /></div>
               </div>
-
               <Button type="submit" className="w-full bg-gradient-to-r from-blue-600 to-emerald-600" disabled={isLoading}>
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <><DollarSign className="mr-1 h-4 w-4" /> Record Payment</>}
               </Button>
@@ -298,24 +250,14 @@ export default function PaymentsPage() {
           </CardContent>
         </Card>
 
-        {/* Payment History */}
         <Card className="border-0 shadow-sm lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5 text-blue-600" /> Recent Payments</CardTitle>
-          </CardHeader>
+          <CardHeader><CardTitle className="text-lg flex items-center gap-2"><Receipt className="h-5 w-5 text-blue-600" /> Recent Payments</CardTitle></CardHeader>
           <CardContent>
             <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Date</TableHead>
-                </TableRow>
-              </TableHeader>
+              <TableHeader><TableRow><TableHead>Student</TableHead><TableHead>Amount</TableHead><TableHead>Method</TableHead><TableHead>Date</TableHead></TableRow></TableHeader>
               <TableBody>
                 {payments.length === 0 ? (
-                  <TableRow><TableCell colSpan={4} className="text-center text-slate-500 py-8">No payments yet.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={4} className="text-center py-8 text-slate-500">No payments yet.</TableCell></TableRow>
                 ) : (
                   payments.map((p) => (
                     <TableRow key={p.id}>

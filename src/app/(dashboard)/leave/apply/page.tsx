@@ -22,6 +22,7 @@ export default function ApplyLeavePage() {
   const [schoolName, setSchoolName] = useState('');
   const [studentSearch, setStudentSearch] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
+  const [students, setStudents] = useState<any[]>([]);
   const [guardians, setGuardians] = useState<any[]>([]);
   const [selectedGuardian, setSelectedGuardian] = useState('');
   const [reason, setReason] = useState('');

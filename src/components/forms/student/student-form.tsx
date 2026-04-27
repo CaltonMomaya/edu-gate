@@ -1,6 +1,7 @@
 // @ts-nocheck
-import { logActivity } from "@/lib/audit";
 'use client';
+// @ts-nocheck
+import { logActivity } from "@/lib/audit";
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';

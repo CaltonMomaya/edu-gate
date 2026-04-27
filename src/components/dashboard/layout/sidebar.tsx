@@ -18,7 +18,7 @@ import {
 import type { UserRole } from '@/types';
 
 interface NavItem {
-  name: string;
+  name?: string;
   href?: string;
   icon?: any;
   indent?: boolean;

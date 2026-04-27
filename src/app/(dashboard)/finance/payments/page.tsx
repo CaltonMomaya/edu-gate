@@ -1,4 +1,5 @@
 'use client';
+import { logActivity } from "@/lib/audit";
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -83,6 +84,7 @@ export default function PaymentsPage() {
     const { data: guardians } = await supabase.from('guardians').select('email').eq('student_id', selectedStudent.id).eq('is_primary', true).single();
     if (guardians?.email) { await sendEmail({ to: guardians.email, subject: `Payment Receipt - ${schoolName}`, html: paymentReceiptEmail(`${selectedStudent.first_name} ${selectedStudent.last_name}`, paymentAmount, 0, new Date().toLocaleDateString(), schoolName) }); }
 
+    await logActivity("payment_recorded", "payment", "", { student: `${selectedStudent.first_name} ${selectedStudent.last_name}`, amount: paymentAmount, method });
     toast.success(`KES ${paymentAmount.toLocaleString()} recorded!`);
     setAmount(''); setTransRef(''); setSelectedStudent(null); setStudentSearch('');
     loadData(); setIsLoading(false);

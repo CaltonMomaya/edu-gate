@@ -1,4 +1,5 @@
 'use client';
+import { logActivity } from "@/lib/audit";
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -65,6 +66,7 @@ export default function BlackBookPage() {
     e.preventDefault(); if (!selectedStudent || !offense) { toast.error('Select student and enter offense'); return; }
     setIsLoading(true);
     const { error } = await supabase.from('black_book').insert({ student_id: selectedStudent.id, school_id: schoolId, offense, punishment: punishment || null, status: 'pending' });
+    await logActivity("offense_recorded", "discipline", "", { student: `${selectedStudent.first_name} ${selectedStudent.last_name}`, offense });
     if (error) toast.error('Failed'); else { toast.success('Recorded'); setSelectedStudent(null); setStudentSearch(''); setOffense(''); setPunishment(''); loadData(); }
     setIsLoading(false);
   }

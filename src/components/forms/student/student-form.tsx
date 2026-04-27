@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { logActivity } from "@/lib/audit";
 'use client';
 
 import { useState, useRef } from 'react';
@@ -286,6 +287,7 @@ export function StudentForm() {
         if (guardianError) throw guardianError;
       }
 
+    await logActivity("student_registered", "student", "", { name: `${data.firstName} ${data.lastName}`, admission: data.admissionNumber, grade: data.grade });
       toast.success(`${data.firstName} ${data.lastName} registered!`);
       router.push('/students');
       router.refresh();

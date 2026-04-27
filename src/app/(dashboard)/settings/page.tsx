@@ -9,14 +9,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { Building2, Mail, MapPin, Hash, Save, Calendar, Clock, Shield, AlertTriangle } from 'lucide-react';
+import { Building2, Mail, MapPin, Hash, Save, Calendar, Clock, Shield, AlertTriangle, CheckCircle } from 'lucide-react';
 
 export default function SettingsPage() {
   const supabase = createClient();
   const [school, setSchool] = useState({ name: '', email: '', po_box: '', school_code: '', phone: '' });
   const [schoolId, setSchoolId] = useState('');
   const [academicYear, setAcademicYear] = useState('');
-  const [term, setTerm] = useState('term1');
+  const [currentYear, setCurrentYear] = useState('');
+  const [currentTerm, setCurrentTerm] = useState('term1');
   const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => { loadSchool(); }, []);
@@ -34,8 +35,10 @@ export default function SettingsPage() {
         name: data.name || '', email: data.email || '', po_box: data.po_box || '',
         school_code: data.school_code || '', phone: data.phone || '',
       });
+      setCurrentYear(data.current_academic_year || new Date().getFullYear().toString());
+      setCurrentTerm(data.current_term || 'term1');
+      setAcademicYear(data.current_academic_year || new Date().getFullYear().toString());
     }
-    setAcademicYear(new Date().getFullYear().toString());
   }
 
   async function saveSettings(e: React.FormEvent) {
@@ -44,14 +47,25 @@ export default function SettingsPage() {
       name: school.name, email: school.email, po_box: school.po_box, phone: school.phone,
     }).eq('id', schoolId);
     setIsSaving(false);
-    if (error) toast.error('Failed to save');
-    else toast.success('Settings saved!');
+    if (error) toast.error('Failed');
+    else toast.success('School profile saved!');
   }
 
-  async function setCurrentTerm() {
-    if (!confirm(`Set Term 1, ${academicYear} as current?`)) return;
-    toast.success(`Current term set to Term 1, ${academicYear}`);
+  async function saveAcademicSettings() {
+    setIsSaving(true);
+    const { error } = await supabase.from('schools').update({
+      current_academic_year: academicYear,
+      current_term: currentTerm,
+    }).eq('id', schoolId);
+    setIsSaving(false);
+    if (error) toast.error('Failed');
+    else {
+      setCurrentYear(academicYear);
+      toast.success(`Academic year set to ${academicYear}, ${currentTerm === 'term1' ? 'Term 1' : currentTerm === 'term2' ? 'Term 2' : 'Term 3'}`);
+    }
   }
+
+  const termLabel = (t: string) => t === 'term1' ? 'Term 1' : t === 'term2' ? 'Term 2' : 'Term 3';
 
   return (
     <div className="p-6 max-w-2xl mx-auto space-y-6">
@@ -86,9 +100,13 @@ export default function SettingsPage() {
       <Card className="border-0 shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Calendar className="h-5 w-5 text-emerald-600" />Academic Settings</CardTitle>
-          <CardDescription>Set current academic year and term</CardDescription>
+          <CardDescription>Set the current academic year and term. This becomes the default across the system.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          <div className="bg-blue-50 p-3 rounded-lg text-sm">
+            <CheckCircle className="h-4 w-4 inline mr-1 text-blue-600" />
+            Currently active: <Badge className="bg-blue-600">{termLabel(currentTerm)}, {currentYear}</Badge>
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Academic Year</Label>
@@ -96,19 +114,17 @@ export default function SettingsPage() {
             </div>
             <div className="space-y-2">
               <Label>Current Term</Label>
-              <select value={term} onChange={e => setTerm(e.target.value)} className="w-full h-10 rounded-lg border border-input bg-transparent px-3 py-1 text-sm">
+              <select value={currentTerm} onChange={e => setCurrentTerm(e.target.value)} className="w-full h-10 rounded-lg border border-input bg-transparent px-3 py-1 text-sm">
                 <option value="term1">Term 1</option>
                 <option value="term2">Term 2</option>
                 <option value="term3">Term 3</option>
               </select>
             </div>
           </div>
-          <Button variant="outline" onClick={setCurrentTerm}>
-            <Clock className="mr-2 h-4 w-4" />Set as Current Term
+          <Button onClick={saveAcademicSettings} disabled={isSaving}>
+            {isSaving ? 'Saving...' : <><Clock className="mr-2 h-4 w-4" />Apply Academic Settings</>}
           </Button>
-          <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-700">
-            <Shield className="h-4 w-4 inline mr-1" />Current: <Badge className="bg-blue-600">Term 1, 2026</Badge>
-          </div>
+          <p className="text-xs text-slate-400">This sets the default year for fees, payments, exams, and reports across the entire system.</p>
         </CardContent>
       </Card>
 

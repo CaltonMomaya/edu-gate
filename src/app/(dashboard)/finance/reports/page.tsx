@@ -28,7 +28,8 @@ export default function ReportsPage() {
   const [summary, setSummary] = useState({ totalCharged: 0, totalPaid: 0, totalOwed: 0, totalCredit: 0, schoolName: '' });
   const [gradeFilter, setGradeFilter] = useState('all');
   const [balanceFilter, setBalanceFilter] = useState('all');
-  const [yearFilter, setYearFilter] = useState('all');
+  const [yearFilter, setYearFilter] = useState("");
+  const [defaultYr, setDefaultYr] = useState("");
   const [yearInput, setYearInput] = useState('');
   const [schoolId, setSchoolId] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +44,8 @@ export default function ReportsPage() {
     const { data: userData } = await supabase.from('users').select('school_id').eq('id', user.id).single();
     if (!userData?.school_id) { setIsLoading(false); return; }
     setSchoolId(userData.school_id);
+    const { data: sch } = await supabase.from("schools").select("current_academic_year").eq("id", userData.school_id).single();
+    if (sch?.current_academic_year) { setYearFilter(sch.current_academic_year); setDefaultYr(sch.current_academic_year); }
     const sid = userData.school_id;
 
     const { data: school } = await supabase.from('schools').select('name').eq('id', sid).single();

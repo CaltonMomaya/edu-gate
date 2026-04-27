@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
 import { sendEmail, paymentReceiptEmail } from '@/lib/email';
 import { Button } from '@/components/ui/button';
@@ -33,7 +32,7 @@ export default function PaymentsPage() {
   const [amount, setAmount] = useState('');
   const [method, setMethod] = useState('cash');
   const [transRef, setTransRef] = useState('');
-  const [academicYear, setAcademicYear] = useState('2026');
+  const [academicYear, setAcademicYear] = useState(new Date().getFullYear().toString());
   const [term, setTerm] = useState('term1');
 
   useEffect(() => { loadData(); }, [page]);
@@ -45,8 +44,12 @@ export default function PaymentsPage() {
     if (!userData?.school_id) return;
     setSchoolId(userData.school_id);
 
-    const { data: school } = await supabase.from('schools').select('name').eq('id', userData.school_id).single();
-    if (school) setSchoolName(school.name);
+    // Load school info (name + academic year)
+    const { data: school } = await supabase.from('schools').select('name, current_academic_year').eq('id', userData.school_id).single();
+    if (school) {
+      setSchoolName(school.name);
+      if (school.current_academic_year) setAcademicYear(school.current_academic_year);
+    }
 
     const { data: s } = await supabase.from('students').select('id, first_name, last_name, admission_number, grade').eq('school_id', userData.school_id).eq('status', 'active').order('first_name');
     if (s) setStudents(s);
@@ -99,7 +102,10 @@ export default function PaymentsPage() {
           <Input type="number" value={amount} onChange={e => setAmount(e.target.value)} placeholder="Amount (KES)" />
           <Select value={method} onValueChange={setMethod}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="cash">Cash</SelectItem><SelectItem value="mpesa">M-Pesa</SelectItem><SelectItem value="bank_transfer">Bank Transfer</SelectItem></SelectContent></Select>
           <Input value={transRef} onChange={e => setTransRef(e.target.value)} placeholder="Ref (optional)" />
-          <div className="grid grid-cols-2 gap-2"><Select value={term} onValueChange={setTerm}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="term1">Term 1</SelectItem><SelectItem value="term2">Term 2</SelectItem><SelectItem value="term3">Term 3</SelectItem></SelectContent></Select><Input value={academicYear} onChange={e => setAcademicYear(e.target.value)} placeholder="Year" /></div>
+          <div className="grid grid-cols-2 gap-2">
+            <Select value={term} onValueChange={setTerm}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="term1">Term 1</SelectItem><SelectItem value="term2">Term 2</SelectItem><SelectItem value="term3">Term 3</SelectItem></SelectContent></Select>
+            <Input value={academicYear} onChange={e => setAcademicYear(e.target.value)} placeholder="Year" />
+          </div>
           <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Record'}</Button>
         </form></CardContent></Card>
 

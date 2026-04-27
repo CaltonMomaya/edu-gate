@@ -32,7 +32,8 @@ export default function ExamsPage() {
   // New exam form
   const [examName, setExamName] = useState('');
   const [examTerm, setExamTerm] = useState('term1');
-  const [examYear, setExamYear] = useState('2026');
+  const [examYear, setExamYear] = useState("");
+  const [defaultYear, setDefaultYear] = useState(new Date().getFullYear().toString());
 
   // Add result form
   const [studentSearch, setStudentSearch] = useState('');

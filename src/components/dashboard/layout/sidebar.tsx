@@ -12,7 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import {
   GraduationCap, TrendingUp, LayoutDashboard, Users, BookOpen,
   DollarSign, Scale, DoorOpen, ClipboardCheck, Settings,
-  Gamepad2, Music, FlaskConical, X, Home, CreditCard, Download, UserPlus, MessageSquare,
+  Gamepad2, Music, FlaskConical, X, Home, CreditCard, Download, Activity, UserPlus, MessageSquare,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 
@@ -35,7 +35,7 @@ const allNavigation: NavItem[] = [
   { name: 'Houses', href: '/houses', icon: Home },
   { separator: true },
   { name: 'Finance', href: '/finance', icon: DollarSign, roles: ['admin', 'bursar', 'principal'] },
-  { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, Download, indent: true, roles: ['admin', 'bursar'] },
+  { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, Download, Activity, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Payments', href: '/finance/payments', icon: DollarSign, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Reports', href: '/finance/reports', icon: BookOpen, indent: true, roles: ['admin', 'bursar', 'principal'] },
   { separator: true },
@@ -54,7 +54,7 @@ const allNavigation: NavItem[] = [
   { separator: true },
   { name: 'SMS', href: '/sms', icon: MessageSquare, roles: ['admin'] },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
-  { name: 'Subscription', href: '/subscription', icon: CreditCard, Download, roles: ['admin'] },
+  { name: 'Subscription', href: '/subscription', icon: CreditCard, Download, Activity, roles: ['admin'] },
 ];
 
 interface SidebarProps {

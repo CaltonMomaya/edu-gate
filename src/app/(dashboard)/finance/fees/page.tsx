@@ -1,3 +1,4 @@
+import { logAction } from "@/lib/audit";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -68,6 +69,7 @@ export default function FeesPage() {
       grade: feeGrade, term: feeTerm, academic_year: feeYear,
     });
     if (error) toast.error('Failed');
+    await logAction(schoolId, "fee_structure_added", "finance", "", { name: feeName, amount: feeAmount, grade: feeGrade });
     else { toast.success(`${feeName} added for ${feeYear}`); setFeeName(''); setFeeAmount(''); loadFees(schoolId); }
     setIsLoading(false);
   }

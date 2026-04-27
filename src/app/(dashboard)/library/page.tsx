@@ -1,3 +1,4 @@
+import { logAction } from "@/lib/audit";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -109,6 +110,7 @@ export default function LibraryPage() {
     });
     if (!error) {
       await supabase.from('library_books').update({ available: book.available - 1 }).eq('id', selectedBook);
+    await logAction(schoolId, "book_issued", "library", selectedStudent.id, { book: book?.title, student: `${selectedStudent.first_name} ${selectedStudent.last_name}` });
       toast.success(`Issued to ${selectedStudent.first_name}!`);
       setSelectedBook(''); setSelectedStudent(null); setStudentSearch(''); setBookSearch(''); setDueDate('');
       loadData();
@@ -122,6 +124,7 @@ export default function LibraryPage() {
     await supabase.from('library_issued').update({ status: 'returned', return_date: new Date().toISOString().split('T')[0], fine_amount: fineVal }).eq('id', issueId);
     const book = books.find(b => b.id === bookId);
     if (book) await supabase.from('library_books').update({ available: book.available + 1 }).eq('id', bookId);
+    await logAction(schoolId, "book_returned", "library", "", { book });
     toast.success(fineVal > 0 ? `Returned with KES ${fineVal} fine` : 'Returned');
     loadData();
   }

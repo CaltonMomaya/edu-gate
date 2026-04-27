@@ -1,3 +1,4 @@
+import { logAction } from "@/lib/audit";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -84,6 +85,7 @@ export default function ExamsPage() {
       subject, score: parseFloat(score), grade: grade || gradeCalc, remarks,
     });
     if (error) { toast.error(error.message.includes('duplicate') ? 'Result already exists' : 'Failed'); }
+    await logAction(schoolId, "exam_result_added", "exam", selectedStudent, { subject, score });
     else { toast.success('Result added!'); setSubject(''); setScore(''); setGrade(''); setRemarks(''); setSelectedStudent(''); setStudentSearch(''); loadResults(activeExam); }
   }
 

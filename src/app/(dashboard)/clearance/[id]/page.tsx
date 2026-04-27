@@ -1,3 +1,4 @@
+import { logAction } from "@/lib/audit";
 'use client';
 
 import { useState, useEffect } from 'react';

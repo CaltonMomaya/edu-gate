@@ -1,3 +1,4 @@
+import { logAction } from "@/lib/audit";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -61,6 +62,7 @@ export default function DepartmentsPage() {
     setIsLoading(true);
     const maxOrder = departments.reduce((max, d) => Math.max(max, d.clearance_order || 0), 0);
     const { error } = await supabase.from('departments').insert({ school_id: schoolId, name: newDeptName.trim(), clearance_order: maxOrder + 1 });
+    await logAction(schoolId, "department_added", "department", "", { name: newDeptName });
     if (error) toast.error('Failed'); else { toast.success(`${newDeptName} added`); setNewDeptName(''); loadData(); }
     setIsLoading(false);
   }

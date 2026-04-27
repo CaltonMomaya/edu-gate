@@ -1,3 +1,4 @@
+import { logAction } from "@/lib/audit";
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -66,6 +67,7 @@ export default function TeachersPage() {
       });
       const result = await response.json();
       if (!response.ok) { toast.error(result.message || 'Failed'); return; }
+    await logAction(schoolId, "staff_created", "staff", "", { name: fullName, role });
       toast.success(`${fullName} added!`);
       setFullName(''); setEmail(''); setTscNumber(''); setRole('teacher'); setPhone('');
       loadStaff();

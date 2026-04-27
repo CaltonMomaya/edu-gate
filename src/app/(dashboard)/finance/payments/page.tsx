@@ -1,8 +1,8 @@
 'use client';
-import { logActivity } from "@/lib/audit";
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { logAction } from '@/lib/audit';
 import { sendEmail, paymentReceiptEmail } from '@/lib/email';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -45,7 +45,6 @@ export default function PaymentsPage() {
     if (!userData?.school_id) return;
     setSchoolId(userData.school_id);
 
-    // Load school info (name + academic year)
     const { data: school } = await supabase.from('schools').select('name, current_academic_year').eq('id', userData.school_id).single();
     if (school) {
       setSchoolName(school.name);
@@ -84,7 +83,8 @@ export default function PaymentsPage() {
     const { data: guardians } = await supabase.from('guardians').select('email').eq('student_id', selectedStudent.id).eq('is_primary', true).single();
     if (guardians?.email) { await sendEmail({ to: guardians.email, subject: `Payment Receipt - ${schoolName}`, html: paymentReceiptEmail(`${selectedStudent.first_name} ${selectedStudent.last_name}`, paymentAmount, 0, new Date().toLocaleDateString(), schoolName) }); }
 
-    await logActivity("payment_recorded", "payment", "", { student: `${selectedStudent.first_name} ${selectedStudent.last_name}`, amount: paymentAmount, method });
+    await logAction(schoolId, "payment_recorded", "payment", selectedStudent.id, { amount: paymentAmount, student: `${selectedStudent.first_name} ${selectedStudent.last_name}` });
+
     toast.success(`KES ${paymentAmount.toLocaleString()} recorded!`);
     setAmount(''); setTransRef(''); setSelectedStudent(null); setStudentSearch('');
     loadData(); setIsLoading(false);

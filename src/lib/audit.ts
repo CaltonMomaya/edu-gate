@@ -1,24 +1,23 @@
 import { createClient } from '@/lib/supabase/client';
 
-export async function logActivity(
+export async function logAction(
+  schoolId: string,
   action: string,
   entityType: string,
   entityId: string,
-  details?: any
+  newData?: any,
+  oldData?: any
 ) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
-
-  const { data: userData } = await supabase.from('users').select('school_id').eq('id', user.id).single();
-  if (!userData?.school_id) return;
 
   await supabase.from('audit_logs').insert({
-    school_id: userData.school_id,
-    user_id: user.id,
+    school_id: schoolId,
+    user_id: user?.id || null,
     action,
     entity_type: entityType,
     entity_id: entityId,
-    new_data: details || {},
+    new_data: newData || null,
+    old_data: oldData || null,
   });
 }

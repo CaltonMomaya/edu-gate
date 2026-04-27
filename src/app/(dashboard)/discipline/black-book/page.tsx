@@ -1,8 +1,8 @@
 'use client';
-import { logActivity } from "@/lib/audit";
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { logAction } from '@/lib/audit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,8 +66,12 @@ export default function BlackBookPage() {
     e.preventDefault(); if (!selectedStudent || !offense) { toast.error('Select student and enter offense'); return; }
     setIsLoading(true);
     const { error } = await supabase.from('black_book').insert({ student_id: selectedStudent.id, school_id: schoolId, offense, punishment: punishment || null, status: 'pending' });
-    await logActivity("offense_recorded", "discipline", "", { student: `${selectedStudent.first_name} ${selectedStudent.last_name}`, offense });
-    if (error) toast.error('Failed'); else { toast.success('Recorded'); setSelectedStudent(null); setStudentSearch(''); setOffense(''); setPunishment(''); loadData(); }
+    if (error) toast.error('Failed');
+    else {
+      toast.success('Recorded');
+      await logAction(schoolId, "offense_recorded", "offense", selectedStudent.id, { offense, student: `${selectedStudent.first_name} ${selectedStudent.last_name}` });
+      setSelectedStudent(null); setStudentSearch(''); setOffense(''); setPunishment(''); loadData();
+    }
     setIsLoading(false);
   }
 
@@ -75,8 +79,6 @@ export default function BlackBookPage() {
     await supabase.from('black_book').update({ status: newStatus, resolved_at: newStatus === 'served' ? new Date().toISOString() : null }).eq('id', id);
     toast.success('Updated'); loadData();
   }
-
-  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <div className="p-6 space-y-6">
@@ -86,7 +88,7 @@ export default function BlackBookPage() {
           <CardContent><form onSubmit={recordOffense} className="space-y-3">
             <div className="relative"><Input placeholder="Search student..." value={studentSearch} onChange={e => { setStudentSearch(e.target.value); setSelectedStudent(null); }} />
               {studentSearch && !selectedStudent && filteredStudents.length > 0 && <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">{filteredStudents.slice(0, 20).map(s => <button key={s.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b" onClick={() => selectStudent(s)}>{s.first_name} {s.last_name} ({s.admission_number})</button>)}</div>}
-              {selectedStudent && <p className="text-xs text-emerald-600 mt-1">✅ {selectedStudent.first_name} {selectedStudent.last_name} · G{selectedStudent.grade}</p>}
+              {selectedStudent && <p className="text-xs text-emerald-600 mt-1">✅ {selectedStudent.first_name} {selectedStudent.last_name}</p>}
             </div>
             <Textarea value={offense} onChange={e => setOffense(e.target.value)} placeholder="Describe offense..." rows={3} />
             <Input value={punishment} onChange={e => setPunishment(e.target.value)} placeholder="Punishment (optional)" />
@@ -105,7 +107,7 @@ export default function BlackBookPage() {
                   <TableCell>{o.status === 'pending' && <div className="flex gap-1"><Button size="sm" variant="outline" className="text-emerald-600 text-xs" onClick={() => updateStatus(o.id, 'served')}><CheckCircle className="h-3 w-3 mr-1" />Served</Button><Button size="sm" variant="outline" className="text-blue-600 text-xs" onClick={() => updateStatus(o.id, 'pardoned')}>Pardon</Button></div>}</TableCell>
                 </TableRow>
               ))}</TableBody></Table>
-            <div className="flex items-center justify-between mt-4"><p className="text-sm text-slate-500">Page {page} of {totalPages} · {total} records</p><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}><ChevronRight className="h-4 w-4" /></Button></div></div>
+            <div className="flex items-center justify-between mt-4"><p className="text-sm text-slate-500">Page {page} of {Math.ceil(total / PAGE_SIZE)}</p><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(Math.ceil(total / PAGE_SIZE), p + 1))} disabled={page >= Math.ceil(total / PAGE_SIZE)}><ChevronRight className="h-4 w-4" /></Button></div></div>
           </CardContent></Card>
       </div>
     </div>

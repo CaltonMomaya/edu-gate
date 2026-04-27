@@ -1,7 +1,6 @@
-// @ts-nocheck
 'use client';
 // @ts-nocheck
-import { logActivity } from "@/lib/audit";
+import { logAction } from "@/lib/audit";
 
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -288,8 +287,9 @@ export function StudentForm() {
         if (guardianError) throw guardianError;
       }
 
-    await logActivity("student_registered", "student", "", { name: `${data.firstName} ${data.lastName}`, admission: data.admissionNumber, grade: data.grade });
       toast.success(`${data.firstName} ${data.lastName} registered!`);
+    // Audit log
+    await logAction(schoolId, "student_registered", "student", student.id, { name: `${data.firstName} ${data.lastName}`, admission: data.admissionNumber });
       router.push('/students');
       router.refresh();
     } catch (error: any) {
@@ -348,7 +348,7 @@ export function StudentForm() {
           <div className="space-y-2">
             <Label><Hash className="h-3 w-3 inline mr-1" /> Admission Number *</Label>
             <Input
-              ref={admissionRef}
+
               {...register('admissionNumber')}
               placeholder="e.g., SRN/2026/001"
               onKeyDown={(e) => handleEnter(e, firstNameRef)}
@@ -359,16 +359,16 @@ export function StudentForm() {
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-2">
               <Label>First Name *</Label>
-              <Input ref={firstNameRef} {...register('firstName')} placeholder="Alice" onKeyDown={(e) => handleEnter(e, middleNameRef)} />
+              <Input {...register('firstName')} placeholder="Alice" onKeyDown={(e) => handleEnter(e, middleNameRef)} />
               {errors.firstName && <p className="text-xs text-red-500">{errors.firstName.message}</p>}
             </div>
             <div className="space-y-2">
               <Label>Middle Name</Label>
-              <Input ref={middleNameRef} {...register('middleName')} placeholder="Optional" onKeyDown={(e) => handleEnter(e, lastNameRef)} />
+              <Input {...register('middleName')} placeholder="Optional" onKeyDown={(e) => handleEnter(e, lastNameRef)} />
             </div>
             <div className="space-y-2">
               <Label>Last Name *</Label>
-              <Input ref={lastNameRef} {...register('lastName')} placeholder="Otieno" onKeyDown={(e) => handleEnter(e, dayRef)} />
+              <Input {...register('lastName')} placeholder="Otieno" onKeyDown={(e) => handleEnter(e, dayRef)} />
               {errors.lastName && <p className="text-xs text-red-500">{errors.lastName.message}</p>}
             </div>
           </div>
@@ -377,9 +377,9 @@ export function StudentForm() {
           <div className="space-y-2">
             <Label><Calendar className="h-3 w-3 inline mr-1" /> Date of Birth *</Label>
             <div className="grid grid-cols-3 gap-3">
-              <Input ref={dayRef} placeholder="DD" maxLength={2} className="text-center text-lg" onChange={handleDayChange} />
-              <Input ref={monthRef} placeholder="MM" maxLength={2} className="text-center text-lg" onChange={handleMonthChange} />
-              <Input ref={yearRef} placeholder="YYYY" maxLength={4} className="text-center text-lg" onChange={handleYearChange} />
+              <Input placeholder="DD" maxLength={2} className="text-center text-lg" onChange={handleDayChange} />
+              <Input placeholder="MM" maxLength={2} className="text-center text-lg" onChange={handleMonthChange} />
+              <Input placeholder="YYYY" maxLength={4} className="text-center text-lg" onChange={handleYearChange} />
             </div>
           </div>
 
@@ -407,13 +407,13 @@ export function StudentForm() {
             </div>
             <div className="space-y-2">
               <Label><MapPin className="h-3 w-3 inline mr-1" /> Stream</Label>
-              <Input ref={streamRef} {...register('stream')} placeholder="10 Blue" onKeyDown={(e) => handleEnter(e, houseRef)} />
+              <Input {...register('stream')} placeholder="10 Blue" onKeyDown={(e) => handleEnter(e, houseRef)} />
             </div>
           </div>
 
           <div className="space-y-2">
             <Label><Home className="h-3 w-3 inline mr-1" /> Boarding House</Label>
-            <Input ref={houseRef} {...register('house')} placeholder="Elgon House" onKeyDown={(e) => handleEnter(e, g1NameRef)} />
+            <Input {...register('house')} placeholder="Elgon House" onKeyDown={(e) => handleEnter(e, g1NameRef)} />
           </div>
         </CardContent>
       </Card>
@@ -428,15 +428,15 @@ export function StudentForm() {
           <div className="space-y-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
             <span className="text-xs font-medium text-blue-800 bg-blue-100 px-2 py-0.5 rounded-full">Primary Guardian *</span>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Full Name *</Label><Input ref={g1NameRef} {...register('guardian1Name')} placeholder="Jane Doe" onKeyDown={(e) => handleEnter(e, g1PhoneRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Full Name *</Label><Input {...register('guardian1Name')} placeholder="Jane Doe" onKeyDown={(e) => handleEnter(e, g1PhoneRef)} /></div>
               <div className="space-y-1"><Label className="text-xs">Relationship *</Label>
                 <Select onValueChange={(v) => setValue('guardian1Relationship', v as any)}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent><SelectItem value="mother">Mother</SelectItem><SelectItem value="father">Father</SelectItem><SelectItem value="guardian">Guardian</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1"><Label className="text-xs"><Phone className="h-3 w-3 inline" /> Phone *</Label><Input ref={g1PhoneRef} {...register('guardian1Phone')} placeholder="0712345678" onKeyDown={(e) => handleEnter(e, g1EmailRef)} /></div>
-              <div className="space-y-1"><Label className="text-xs"><Mail className="h-3 w-3 inline" /> Email</Label><Input ref={g1EmailRef} {...register('guardian1Email')} placeholder="email@email.com" onKeyDown={(e) => handleEnter(e, g2NameRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs"><Phone className="h-3 w-3 inline" /> Phone *</Label><Input {...register('guardian1Phone')} placeholder="0712345678" onKeyDown={(e) => handleEnter(e, g1EmailRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs"><Mail className="h-3 w-3 inline" /> Email</Label><Input {...register('guardian1Email')} placeholder="email@email.com" onKeyDown={(e) => handleEnter(e, g2NameRef)} /></div>
             </div>
           </div>
 
@@ -444,15 +444,15 @@ export function StudentForm() {
           <div className="space-y-3 p-4 bg-slate-50 rounded-lg border">
             <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-0.5 rounded-full">Second Guardian (Optional)</span>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Full Name</Label><Input ref={g2NameRef} {...register('guardian2Name')} placeholder="John Doe" onKeyDown={(e) => handleEnter(e, g2PhoneRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Full Name</Label><Input {...register('guardian2Name')} placeholder="John Doe" onKeyDown={(e) => handleEnter(e, g2PhoneRef)} /></div>
               <div className="space-y-1"><Label className="text-xs">Relationship</Label>
                 <Select onValueChange={(v) => setValue('guardian2Relationship', v as any)}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent><SelectItem value="mother">Mother</SelectItem><SelectItem value="father">Father</SelectItem><SelectItem value="guardian">Guardian</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1"><Label className="text-xs"><Phone className="h-3 w-3 inline" /> Phone</Label><Input ref={g2PhoneRef} {...register('guardian2Phone')} placeholder="0723456789" onKeyDown={(e) => handleEnter(e, g2EmailRef)} /></div>
-              <div className="space-y-1"><Label className="text-xs"><Mail className="h-3 w-3 inline" /> Email</Label><Input ref={g2EmailRef} {...register('guardian2Email')} placeholder="email@email.com" onKeyDown={(e) => handleEnter(e, emNameRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs"><Phone className="h-3 w-3 inline" /> Phone</Label><Input {...register('guardian2Phone')} placeholder="0723456789" onKeyDown={(e) => handleEnter(e, g2EmailRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs"><Mail className="h-3 w-3 inline" /> Email</Label><Input {...register('guardian2Email')} placeholder="email@email.com" onKeyDown={(e) => handleEnter(e, emNameRef)} /></div>
             </div>
           </div>
 
@@ -460,15 +460,15 @@ export function StudentForm() {
           <div className="space-y-3 p-4 bg-amber-50 rounded-lg border border-amber-200">
             <span className="text-xs font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">Emergency Guardian (Optional)</span>
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1"><Label className="text-xs">Full Name</Label><Input ref={emNameRef} {...register('emergencyName')} placeholder="Uncle Mike" onKeyDown={(e) => handleEnter(e, emPhoneRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs">Full Name</Label><Input {...register('emergencyName')} placeholder="Uncle Mike" onKeyDown={(e) => handleEnter(e, emPhoneRef)} /></div>
               <div className="space-y-1"><Label className="text-xs">Relationship</Label>
                 <Select onValueChange={(v) => setValue('emergencyRelationship', v as any)}>
                   <SelectTrigger><SelectValue placeholder="Select" /></SelectTrigger>
                   <SelectContent><SelectItem value="mother">Mother</SelectItem><SelectItem value="father">Father</SelectItem><SelectItem value="guardian">Guardian</SelectItem></SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1"><Label className="text-xs"><Phone className="h-3 w-3 inline" /> Phone</Label><Input ref={emPhoneRef} {...register('emergencyPhone')} placeholder="0734567890" onKeyDown={(e) => handleEnter(e, emEmailRef)} /></div>
-              <div className="space-y-1"><Label className="text-xs"><Mail className="h-3 w-3 inline" /> Email</Label><Input ref={emEmailRef} {...register('emergencyEmail')} placeholder="email@email.com" /></div>
+              <div className="space-y-1"><Label className="text-xs"><Phone className="h-3 w-3 inline" /> Phone</Label><Input {...register('emergencyPhone')} placeholder="0734567890" onKeyDown={(e) => handleEnter(e, emEmailRef)} /></div>
+              <div className="space-y-1"><Label className="text-xs"><Mail className="h-3 w-3 inline" /> Email</Label><Input {...register('emergencyEmail')} placeholder="email@email.com" /></div>
             </div>
           </div>
 

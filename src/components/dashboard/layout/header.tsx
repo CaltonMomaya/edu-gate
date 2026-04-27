@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { createClient } from '@/lib/supabase/client';
 import { NotificationBell } from './notifications';
+import { GlobalSearch } from '@/components/shared/global-search';
 import { Menu, LogOut, User, Settings } from 'lucide-react';
 import { ROLES } from '@/lib/auth/roles';
 import type { UserRole } from '@/types';
@@ -34,8 +35,7 @@ export function Header({ onMenuClick }: HeaderProps) {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         setUserName(user.user_metadata?.full_name || user.email || 'Admin');
-        const { data: userData } = await supabase
-          .from('users').select('school_id, full_name, role').eq('id', user.id).single();
+        const { data: userData } = await supabase.from('users').select('school_id, full_name, role').eq('id', user.id).single();
         if (userData) {
           setUserRole(userData.role as UserRole);
           const { data: school } = await supabase.from('schools').select('name').eq('id', userData.school_id).single();
@@ -61,15 +61,16 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={onMenuClick}>
             <Menu className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="hidden md:block w-64">
+            <GlobalSearch />
+          </div>
+          <div className="md:hidden">
             <h2 className="text-sm font-semibold text-slate-800">{schoolName || 'EDU GATE'}</h2>
-            <p className="text-xs text-slate-500">Dashboard</p>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
           <NotificationBell />
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">
@@ -86,16 +87,12 @@ export function Header({ onMenuClick }: HeaderProps) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuLabel className="text-xs text-slate-400 font-normal -mt-2">
-                {roleLabel} • {schoolName}
-              </DropdownMenuLabel>
+              <DropdownMenuLabel className="text-xs text-slate-400 font-normal -mt-2">{roleLabel} • {schoolName}</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => router.push("/profile")}><User className="mr-2 h-4 w-4" /> Profile</DropdownMenuItem>
-              <DropdownMenuItem><Settings className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/profile')}><User className="mr-2 h-4 w-4" /> Profile</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push('/settings')}><Settings className="mr-2 h-4 w-4" /> Settings</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleLogout} className="text-red-600">
-                <LogOut className="mr-2 h-4 w-4" /> Sign out
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleLogout} className="text-red-600"><LogOut className="mr-2 h-4 w-4" /> Sign out</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

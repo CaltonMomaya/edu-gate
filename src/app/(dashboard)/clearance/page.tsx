@@ -16,7 +16,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Search, ClipboardCheck, CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
+import { Search, ClipboardCheck, CheckCircle, XCircle, Clock, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface Department {
   id: string;
@@ -43,6 +43,9 @@ interface Student {
 
 export default function ClearancePage() {
   const supabase = createClient();
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const PAGE_SIZE = 15;
   const [students, setStudents] = useState<Student[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [clearanceData, setClearanceData] = useState<Record<string, ClearanceStatus[]>>({});
@@ -206,6 +209,7 @@ export default function ClearancePage() {
             </TableBody>
           </Table>
         </CardContent>
+          <div className="flex items-center justify-between mt-4 pt-4 border-t"><p className="text-sm text-slate-500">Page {page} of {Math.ceil(total / PAGE_SIZE)} · {total} students</p><div className="flex gap-2"><Button variant="outline" size="sm" onClick={() => setPage((p: number) => Math.max(1, p - 1))} disabled={page <= 1}><ChevronLeft className="h-4 w-4" /></Button><Button variant="outline" size="sm" onClick={() => setPage((p: number) => Math.min(Math.ceil(total / PAGE_SIZE), p + 1))} disabled={page >= Math.ceil(total / PAGE_SIZE)}><ChevronRight className="h-4 w-4" /></Button></div></div>
       </Card>
     </div>
   );

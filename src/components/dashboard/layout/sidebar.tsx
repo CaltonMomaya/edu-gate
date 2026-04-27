@@ -12,7 +12,8 @@ import { createClient } from '@/lib/supabase/client';
 import {
   GraduationCap, TrendingUp, LayoutDashboard, Users, BookOpen,
   DollarSign, Scale, DoorOpen, ClipboardCheck, Settings,
-  Gamepad2, Music, FlaskConical, X, Home, CreditCard, Download, Activity, HelpCircle, History, UserPlus, MessageSquare,
+  Gamepad2, Music, FlaskConical, X, Home, CreditCard, UserPlus,
+  MessageSquare, Download, Activity, HelpCircle, History, Database,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 
@@ -35,7 +36,7 @@ const allNavigation: NavItem[] = [
   { name: 'Houses', href: '/houses', icon: Home },
   { separator: true },
   { name: 'Finance', href: '/finance', icon: DollarSign, roles: ['admin', 'bursar', 'principal'] },
-  { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, Download, Activity, HelpCircle, History, indent: true, roles: ['admin', 'bursar'] },
+  { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Payments', href: '/finance/payments', icon: DollarSign, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Reports', href: '/finance/reports', icon: BookOpen, indent: true, roles: ['admin', 'bursar', 'principal'] },
   { separator: true },
@@ -53,8 +54,15 @@ const allNavigation: NavItem[] = [
   { name: 'Alumni', href: '/alumni', icon: GraduationCap },
   { separator: true },
   { name: 'SMS', href: '/sms', icon: MessageSquare, roles: ['admin'] },
+  { name: 'Data Export', href: '/export', icon: Download, roles: ['admin'] },
+  { name: 'System Health', href: '/health', icon: Activity, roles: ['admin'] },
+  { separator: true },
+  { name: 'Help & Guides', href: '/help', icon: HelpCircle },
+  { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['admin', 'principal'] },
+  { name: 'Backup & Restore', href: '/backup', icon: Database, roles: ['admin'] },
+  { separator: true },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
-  { name: 'Subscription', href: '/subscription', icon: CreditCard, Download, Activity, HelpCircle, History, roles: ['admin'] },
+  { name: 'Subscription', href: '/subscription', icon: CreditCard, roles: ['admin'] },
 ];
 
 interface SidebarProps {
@@ -68,9 +76,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userRole, setUserRole] = useState<UserRole>('admin');
   const [navigation, setNavigation] = useState<NavItem[]>(allNavigation);
 
-  useEffect(() => {
-    loadUserRole();
-  }, []);
+  useEffect(() => { loadUserRole(); }, []);
 
   async function loadUserRole() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -79,46 +85,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
     if (userData?.role) {
       const role = userData.role as UserRole;
       setUserRole(role);
-
-      // Filter navigation based on role
-      if (role === 'admin') {
-        setNavigation(allNavigation); // Admin sees everything
-      } else {
-        setNavigation(
-          allNavigation.filter(item => {
-            // Separators always show
-            if (item.separator) {
-              // Only show separator if the next visible item exists
-              return true;
-            }
-            // If no roles specified, show to everyone
-            if (!item.roles) return true;
-            // Show if user's role is in the allowed roles
-            return item.roles.includes(role);
-          }).filter((item, index, arr) => {
-            // Remove orphan separators (two in a row)
-            if (item.separator && (index === 0 || arr[index - 1]?.separator)) return false;
-            if (item.separator && index === arr.length - 1) return false;
-            return true;
-          })
-        );
+      if (role === 'admin') { setNavigation(allNavigation); }
+      else {
+        setNavigation(allNavigation.filter(item => {
+          if (item.separator) return true;
+          if (!item.roles) return true;
+          return item.roles.includes(role);
+        }).filter((item, index, arr) => {
+          if (item.separator && (index === 0 || arr[index - 1]?.separator)) return false;
+          if (item.separator && index === arr.length - 1) return false;
+          return true;
+        }));
       }
     }
   }
 
-  const handleNavClick = () => {
-    if (window.innerWidth < 1024) onClose();
-  };
+  const handleNavClick = () => { if (window.innerWidth < 1024) onClose(); };
 
   const NavContent = () => (
     <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
       {navigation.map((item, index) => {
         if (item.separator) return <Separator key={`sep-${index}`} className="my-3 bg-slate-700/50" />;
         if (!item.href) return null;
-        
         const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
         return (
-          <Link key={item.name} href={item.href} onClick={handleNavClick}
+          <Link key={item.name} href={item.href || ''} onClick={handleNavClick}
             className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
               item.indent && 'ml-4',
               isActive ? 'bg-gradient-to-r from-blue-600/30 to-emerald-600/30 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white')}>
@@ -143,9 +134,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         <Button variant="ghost" size="icon" className="lg:hidden text-white hover:text-slate-200 hover:bg-slate-700" onClick={onClose}><X className="h-5 w-5" /></Button>
       </div>
       <NavContent />
-      <div className="p-4 border-t border-slate-700/50">
-        <div className="text-xs text-slate-500 text-center">© 2026 EDU GATE</div>
-      </div>
+      <div className="p-4 border-t border-slate-700/50"><div className="text-xs text-slate-500 text-center">© 2026 EDU GATE</div></div>
     </div>
   );
 

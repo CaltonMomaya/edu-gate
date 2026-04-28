@@ -1,5 +1,5 @@
-import { logAction } from "@/lib/audit";
 'use client';
+import { logAction } from "@/lib/audit";
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';

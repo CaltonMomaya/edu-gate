@@ -10,7 +10,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { createClient } from '@/lib/supabase/client';
 import {
-  GraduationCap, TrendingUp, LayoutDashboard, Users, BookOpen,
+  GraduationCap, Building2, TrendingUp, LayoutDashboard, Users, BookOpen,
   DollarSign, Scale, DoorOpen, ClipboardCheck, Settings,
   Gamepad2, Music, FlaskConical, X, Home, CreditCard, UserPlus,
   MessageSquare, Download, Activity, HelpCircle, History, Database,
@@ -77,6 +77,23 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [navigation, setNavigation] = useState<NavItem[]>(allNavigation);
 
   useEffect(() => { loadUserRole(); }, []);
+  // Load custom departments for assigned staff
+  useEffect(() => {
+    async function loadDepts() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data: assignedDepts } = await supabase.from("departments").select("id, name").eq("assigned_officer", user.id);
+      if (assignedDepts && assignedDepts.length > 0) {
+        const defaults = ["Library", "Finance", "Discipline"];
+        const custom = assignedDepts.filter(d => !defaults.includes(d.name));
+        if (custom.length > 0) {
+          const deptNav = custom.map(d => ({ name: d.name, href: `/departments/${d.id}`, icon: Building2 }));
+          setNavigation(prev => { const withoutDepts = prev.filter(i => !custom.find(d => d.name === i.name)); return [...withoutDepts, { separator: true }, ...deptNav]; });
+        }
+      }
+    }
+    if (userRole && userRole !== "admin") loadDepts();
+  }, [userRole]);
 
   async function loadUserRole() {
     const { data: { user } } = await supabase.auth.getUser();

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -234,7 +235,7 @@ export default function DepartmentDashboardPage() {
             <CardContent>
               <form onSubmit={issueEquipment} className="space-y-3">
                 <div className="relative"><Label>Item *</Label><Input placeholder="Search equipment..." value={equipSearch} onChange={e => setEquipSearch(e.target.value)} />
-                  {equipSearch && <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">{filteredForIssue.filter(e => e.available > 0).map(e => <button key={e.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b" onMouseDown={(ev) => { ev.preventDefault(); setSelectedEquip(e.id); setEquipSearch(`${e.ref_no} - ${e.name}`); }}>{e.ref_no} - {e.name} <Badge className="ml-2 text-xs">{e.available}</Badge></button>)}</div>}
+                  {equipSearch && <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">{filteredForIssue.filter(e => e.available > 0).map(e => <button key={e.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b" onClick={() => { setSelectedEquip(e.id); setEquipSearch(`${e.ref_no} - ${e.name}`); }}>{e.ref_no} - {e.name} <Badge className="ml-2 text-xs">{e.available}</Badge></button>)}</div>}
                   {selectedEquip && <p className="text-xs text-emerald-600 mt-1">✅ Selected</p>}
                 </div>
                 <div className="relative"><Label>Student *</Label><Input placeholder="Search student..." value={studentSearch} onChange={e => searchStudents(e.target.value)} />

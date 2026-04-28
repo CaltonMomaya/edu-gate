@@ -1,5 +1,5 @@
-import { logAction } from "@/lib/audit";
 'use client';
+import { logAction } from "@/lib/audit";
 
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -68,9 +68,9 @@ export default function FeesPage() {
       school_id: schoolId, name: feeName, amount: parseFloat(feeAmount),
       grade: feeGrade, term: feeTerm, academic_year: feeYear,
     });
-    if (error) toast.error('Failed');
-    await logAction(schoolId, "fee_structure_added", "finance", "", { name: feeName, amount: feeAmount, grade: feeGrade });
-    else { toast.success(`${feeName} added for ${feeYear}`); setFeeName(''); setFeeAmount(''); loadFees(schoolId); }
+    if (error) toast.error("Failed");
+    else { toast.success(`${feeName} added for ${feeYear}`); setFeeName(""); setFeeAmount(""); loadFees(schoolId); }
+    setIsLoading(false);
     setIsLoading(false);
   }
 

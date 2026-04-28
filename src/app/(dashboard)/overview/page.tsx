@@ -159,6 +159,21 @@ export default function OverviewPage() {
   }
 
   // ==================== ADMIN / PRINCIPAL DASHBOARD ====================
+  // Generic dashboard for lab_tech, games_master, music_teacher, and custom department staff
+  if (userRole !== "admin" && userRole !== "principal") {
+    return (
+      <div className="p-6 space-y-6">
+        <h1 className="text-2xl font-bold text-slate-800">Staff Dashboard</h1>
+        <p className="text-slate-500">Welcome, {schoolName}</p>
+        <Card><CardContent className="p-6 text-center">
+          <Package className="h-16 w-16 text-blue-600 mx-auto mb-4" />
+          <p className="text-lg font-medium">You are logged in as <Badge>{userRole.replace("_", " ")}</Badge></p>
+          <p className="text-slate-500 mt-2">Access your assigned departments from the sidebar.</p>
+        </CardContent></Card>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center justify-between">

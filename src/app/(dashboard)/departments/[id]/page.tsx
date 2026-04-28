@@ -72,9 +72,20 @@ export default function DepartmentDashboardPage() {
     if (eq) setEquipment(eq);
 
     const { data: iss } = await supabase.from('department_issued')
-      .select('*, department_equipment(name, ref_no), students(first_name, last_name, admission_number, grade, profile_picture_url)')
+      .select('*')
       .eq('school_id', userData.school_id).eq('department_id', id).order('issued_date', { ascending: false }).limit(50);
-    if (iss) setIssued(iss);
+    if (iss) {
+      // Load related names
+      const eqIds = [...new Set(iss.map(i => i.equipment_id))];
+      const stIds = [...new Set(iss.map(i => i.student_id))];
+      const [eqRes, stRes] = await Promise.all([
+        supabase.from("department_equipment").select("id, name, ref_no").in("id", eqIds),
+        supabase.from("students").select("id, first_name, last_name").in("id", stIds)
+      ]);
+      const eqMap = Object.fromEntries((eqRes.data || []).map(e => [e.id, e]));
+      const stMap = Object.fromEntries((stRes.data || []).map(s => [s.id, s]));
+      const mapped = iss.map(i => ({ ...i, department_equipment: eqMap[i.equipment_id] || { name: i.equipment_id?.slice(0,8) }, students: stMap[i.student_id] || { first_name: i.student_id?.slice(0,8) } })); console.log('Mapped issued:', mapped.length); setIssued(mapped);
+    }
   }
 
   async function addEquipment(e: React.FormEvent) {
@@ -119,7 +130,7 @@ export default function DepartmentDashboardPage() {
     if (!eq || eq.available <= 0) { toast.error('Not available'); return; }
     setIsLoading(true);
     const { error } = await supabase.from('department_issued').insert({
-      school_id: schoolId, department_id: id, equipment_id: selectedEquip, student_id: selectedStudent.id, due_date: dueDate,
+      school_id: schoolId, department_id: id, equipment_id: selectedEquip, student_id: selectedStudent.id, due_date: dueDate, status: "issued",
     });
     if (!error) {
       await supabase.from('department_equipment').update({ available: eq.available - 1 }).eq('id', selectedEquip);
@@ -137,10 +148,31 @@ export default function DepartmentDashboardPage() {
     toast.success('Returned'); loadData();
   }
 
-  async function markLost(issueId: string) {
-    if (!confirm('Mark as lost?')) return;
-    await supabase.from('department_issued').update({ status: 'lost', fine_amount: 500 }).eq('id', issueId);
-    toast.error('Marked as lost'); loadData();
+  async function markLost(issueId: string, equipId: string) {
+    const eq = equipment.find(e => e.id === equipId);
+    const fine = eq?.item_value || 500;
+    if (!confirm(`Mark as lost? KES ${fine.toLocaleString()} fine.`)) return;
+    await supabase.from("department_issued").update({ status: "lost", fine_amount: fine }).eq("id", issueId);
+    toast.error(`Lost - KES ${fine.toLocaleString()} fine`);
+    loadData();
+  }
+
+  async function markBroken(issueId: string, equipId: string) {
+    const eq = equipment.find(e => e.id === equipId);
+    const fine = eq?.item_value || 500;
+    if (!confirm(`Mark as broken? KES ${fine} fine.`)) return;
+    await supabase.from("department_issued").update({ status: "broken", fine_amount: fine }).eq("id", issueId);
+    toast.error(`Broken - KES ${fine} fine`);
+    loadData();
+  }
+
+  async function markDamaged(issueId: string, equipId: string) {
+    const eq = equipment.find(e => e.id === equipId);
+    const fine = eq?.item_value || 500;
+    if (!confirm(`Mark as damaged? KES ${fine.toLocaleString()} fine.`)) return;
+    await supabase.from("department_issued").update({ status: "damaged", fine_amount: fine }).eq("id", issueId);
+    toast.error(`Damaged - KES ${fine.toLocaleString()} fine`);
+    loadData();
   }
 
   const filteredEquip = equipment.filter(e => e.name.toLowerCase().includes(search.toLowerCase()));
@@ -250,13 +282,16 @@ export default function DepartmentDashboardPage() {
             <CardHeader><CardTitle>Active Issues ({activeIssues.length})</CardTitle></CardHeader>
             <CardContent>
               <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Student</TableHead><TableHead>Due</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                    <TableHead>Fine</TableHead>
                 <TableBody>{activeIssues.map(i => (
                   <TableRow key={i.id} className={new Date(i.due_date) < new Date() ? 'bg-red-50' : ''}>
                     <TableCell><p className="font-medium text-sm">{i.department_equipment?.name}</p><p className="text-xs text-slate-400">{i.department_equipment?.ref_no}</p></TableCell>
                     <TableCell><p className="text-sm">{i.students?.first_name} {i.students?.last_name}</p></TableCell>
                     <TableCell className="text-xs">{i.due_date}</TableCell>
                     <TableCell>{new Date(i.due_date) < new Date() ? <Badge className="bg-red-100 text-red-700"><AlertCircle className="h-3 w-3 mr-1" />Overdue</Badge> : <Badge className="bg-blue-100">Issued</Badge>}</TableCell>
-                    <TableCell><div className="flex gap-1"><Button size="sm" variant="outline" className="text-emerald-600 text-xs" onClick={() => returnItem(i.id, i.equipment_id)}>Return</Button><Button size="sm" variant="outline" className="text-red-600 text-xs" onClick={() => markLost(i.id)}>Lost</Button></div></TableCell>
+                    <TableCell><div className="flex gap-1"><Button size="sm" variant="outline" className="text-emerald-600 text-xs" onClick={() => returnItem(i.id, i.equipment_id)}>Return</Button><Button size="sm" variant="outline" className="text-red-600 text-xs" onClick={() => markLost(i.id, i.equipment_id)}>Lost</Button>
+                      <Button size="sm" variant="outline" className="text-orange-600 text-xs" onClick={() => markBroken(i.id, i.equipment_id)}>Broken</Button>
+                      <Button size="sm" variant="outline" className="text-amber-600 text-xs" onClick={() => markDamaged(i.id, i.equipment_id)}>Damaged</Button></div></TableCell>
                   </TableRow>
                 ))}</TableBody></Table>
             </CardContent>
@@ -268,8 +303,9 @@ export default function DepartmentDashboardPage() {
         <Card><CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
           <CardContent>
             <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Student</TableHead><TableHead>Issued</TableHead><TableHead>Returned</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                    <TableHead>Fine</TableHead>
               <TableBody>{issued.map(i => (
-                <TableRow key={i.id}><TableCell>{i.department_equipment?.name}</TableCell><TableCell>{i.students?.first_name} {i.students?.last_name}</TableCell><TableCell className="text-xs">{i.issued_date}</TableCell><TableCell className="text-xs">{i.return_date || '-'}</TableCell><TableCell><Badge className={i.status === 'returned' ? 'bg-emerald-100' : 'bg-red-100'}>{i.status}</Badge></TableCell></TableRow>
+                  <TableRow key={i.id}><TableCell>{i.department_equipment?.name || i.equipment_id?.slice(0,8)}</TableCell><TableCell>{i.students?.first_name || i.student_id?.slice(0,8)} {i.students?.last_name || ""}</TableCell><TableCell className="text-xs">{i.issued_date || "-"}</TableCell><TableCell className="text-xs">{i.return_date || "-"}</TableCell><TableCell><Badge className={i.status === "returned" ? "bg-emerald-200 text-emerald-800 font-medium" : i.status === "lost" ? "bg-red-200 text-red-800 font-medium" : i.status === "broken" ? "bg-orange-200 text-orange-800 font-medium" : i.status === "damaged" ? "bg-amber-200 text-amber-800 font-medium" : "bg-blue-200 text-blue-800 font-medium"}>{i.status?.toUpperCase() || "ISSUED"}</Badge></TableCell><TableCell>{i.fine_amount > 0 ? <span className="text-red-600 font-bold">KES {i.fine_amount.toLocaleString()}</span> : <span className="text-slate-400">-</span>}</TableCell></TableRow>
               ))}</TableBody></Table>
           </CardContent></Card>
       )}

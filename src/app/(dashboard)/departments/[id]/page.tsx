@@ -4,28 +4,32 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/client';
+import { logAction } from '@/lib/audit';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
-import { ArrowLeft, Plus, Search, Trash2, Loader2, Package } from 'lucide-react';
+import { ArrowLeft, Plus, Search, Trash2, Loader2, Package, BookCheck, History, AlertCircle, Building2 } from 'lucide-react';
 
 interface Equipment {
   id: string; ref_no: string; name: string; category: string; quantity: number; available: number;
 }
 interface IssuedItem {
-  id: string; equipment_id: string; student_id: string; issued_date: string; due_date: string; return_date: string; status: string; fine_amount: number;
+  id: string; equipment_id: string; student_id: string; issued_date: string; due_date: string;
+  return_date: string; status: string; fine_amount: number;
   department_equipment: { name: string; ref_no: string };
   students: { first_name: string; last_name: string; admission_number: string; grade: string; profile_picture_url: string };
 }
 interface Department {
-  id: string; name: string;
+  id: string; name: string; assigned_officer: string;
 }
 
-export default function DepartmentInventoryPage() {
+export default function DepartmentDashboardPage() {
   const { id } = useParams();
   const router = useRouter();
   const supabase = createClient();
@@ -40,6 +44,7 @@ export default function DepartmentInventoryPage() {
   const [name, setName] = useState('');
   const [category, setCategory] = useState('General');
   const [quantity, setQuantity] = useState('1');
+  const [itemValue, setItemValue] = useState("");
 
   // Issue
   const [equipSearch, setEquipSearch] = useState('');
@@ -48,6 +53,7 @@ export default function DepartmentInventoryPage() {
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [dueDate, setDueDate] = useState('');
   const [students, setStudents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => { loadData(); }, [id]);
 
@@ -59,15 +65,15 @@ export default function DepartmentInventoryPage() {
     setSchoolId(userData.school_id);
 
     const { data: deptData } = await supabase.from('departments').select('*').eq('id', id).single();
-    if (deptData) setDept(deptData);
-    else { router.push('/departments'); return; }
+    if (!deptData) { router.push('/departments'); return; }
+    setDept(deptData);
 
     const { data: eq } = await supabase.from('department_equipment').select('*').eq('school_id', userData.school_id).eq('department_id', id).order('name');
     if (eq) setEquipment(eq);
 
     const { data: iss } = await supabase.from('department_issued')
       .select('*, department_equipment(name, ref_no), students(first_name, last_name, admission_number, grade, profile_picture_url)')
-      .eq('school_id', userData.school_id).eq('department_id', id).order('issued_date', { ascending: false }).limit(100);
+      .eq('school_id', userData.school_id).eq('department_id', id).order('issued_date', { ascending: false }).limit(50);
     if (iss) setIssued(iss);
   }
 
@@ -76,25 +82,52 @@ export default function DepartmentInventoryPage() {
     const qty = parseInt(quantity) || 1;
     const prefix = dept?.name?.substring(0, 2).toUpperCase() || 'EQ';
     const refNo = prefix + '-' + new Date().getFullYear() + '-' + String(equipment.length + 1).padStart(4, '0');
-    await supabase.from('department_equipment').insert({ school_id: schoolId, department_id: id, ref_no: refNo, name, category, quantity: qty, available: qty });
-    toast.success(`${name} added`); setName(''); setQuantity('1'); loadData();
+    setIsLoading(true);
+    const { error } = await supabase.from('department_equipment').insert({
+      school_id: schoolId, department_id: id, ref_no: refNo, name, category, quantity: qty, available: qty,
+    });
+    if (error) toast.error('Failed');
+    else {
+      toast.success(`${name} added`);
+      await logAction(schoolId, "equipment_added", "department_equipment", "", { name, department: dept?.name });
+      setName(''); setQuantity('1'); loadData();
+    }
+    setIsLoading(false);
   }
 
-  async function deleteEquipment(eqId: string) { await supabase.from('department_equipment').delete().eq('id', eqId); toast.success('Deleted'); loadData(); }
+  async function deleteEquipment(eqId: string) {
+    await supabase.from('department_equipment').delete().eq('id', eqId);
+    toast.success('Deleted'); loadData();
+  }
 
   async function searchStudents(query: string) {
     setStudentSearch(query);
+    setSelectedStudent(null);
     if (query.length < 2) { setStudents([]); return; }
     const { data } = await supabase.from('students').select('id, first_name, last_name, admission_number, grade, profile_picture_url').eq('school_id', schoolId).eq('status', 'active').or(`first_name.ilike.%${query}%,last_name.ilike.%${query}%`).limit(10);
     if (data) setStudents(data);
   }
 
+  function selectStudent(s: any) { setSelectedStudent(s); setStudentSearch(`${s.first_name} ${s.last_name}`); }
+
   async function issueEquipment(e: React.FormEvent) {
-    e.preventDefault(); if (!selectedEquip || !selectedStudent || !dueDate) { toast.error('Fill all fields'); return; }
+    e.preventDefault();
+    if (!selectedEquip) { toast.error('Search and select equipment'); return; }
+    if (!selectedStudent) { toast.error('Search and select a student'); return; }
+    if (!dueDate) { toast.error('Set due date'); return; }
     const eq = equipment.find(eq => eq.id === selectedEquip);
     if (!eq || eq.available <= 0) { toast.error('Not available'); return; }
-    const { error } = await supabase.from('department_issued').insert({ school_id: schoolId, department_id: id, equipment_id: selectedEquip, student_id: selectedStudent.id, due_date: dueDate });
-    if (!error) { await supabase.from('department_equipment').update({ available: eq.available - 1 }).eq('id', selectedEquip); toast.success(`Issued to ${selectedStudent.first_name}`); setSelectedEquip(''); setSelectedStudent(null); setStudentSearch(''); setEquipSearch(''); setDueDate(''); loadData(); }
+    setIsLoading(true);
+    const { error } = await supabase.from('department_issued').insert({
+      school_id: schoolId, department_id: id, equipment_id: selectedEquip, student_id: selectedStudent.id, due_date: dueDate,
+    });
+    if (!error) {
+      await supabase.from('department_equipment').update({ available: eq.available - 1 }).eq('id', selectedEquip);
+      await logAction(schoolId, "equipment_issued", "department_issued", selectedEquip, { student: `${selectedStudent.first_name} ${selectedStudent.last_name}`, equipment: eq.name });
+      toast.success(`Issued to ${selectedStudent.first_name}`);
+      setSelectedEquip(''); setSelectedStudent(null); setStudentSearch(''); setEquipSearch(''); setDueDate(''); loadData();
+    }
+    setIsLoading(false);
   }
 
   async function returnItem(issueId: string, equipId: string) {
@@ -104,92 +137,141 @@ export default function DepartmentInventoryPage() {
     toast.success('Returned'); loadData();
   }
 
-  async function markLost(issueId: string) { if (!confirm('Mark as lost?')) return; await supabase.from('department_issued').update({ status: 'lost', fine_amount: 500 }).eq('id', issueId); toast.error('Lost'); loadData(); }
+  async function markLost(issueId: string) {
+    if (!confirm('Mark as lost?')) return;
+    await supabase.from('department_issued').update({ status: 'lost', fine_amount: 500 }).eq('id', issueId);
+    toast.error('Marked as lost'); loadData();
+  }
 
   const filteredEquip = equipment.filter(e => e.name.toLowerCase().includes(search.toLowerCase()));
-  const filteredForIssue = equipment.filter(e => !equipSearch || e.name.toLowerCase().includes(equipSearch.toLowerCase()));
+  const filteredForIssue = equipment.filter(e => !equipSearch || e.name.toLowerCase().includes(equipSearch.toLowerCase()) || e.ref_no?.toLowerCase().includes(equipSearch));
   const activeIssues = issued.filter(i => i.status === 'issued');
+  const overdueItems = issued.filter(i => i.status === 'issued' && new Date(i.due_date) < new Date());
 
   if (!dept) return <div className="p-6"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
-  // Detect if this is a built-in department (Library, Finance, Discipline)
-  const isClearanceDept = ['Library', 'Finance', 'Discipline'].includes(dept.name);
-  const isInventoryDept = !isClearanceDept;
+  // Default departments (Library, Finance, Discipline) redirect to their modules
+  const isDefault = ['Library', 'Finance', 'Discipline'].includes(dept.name);
 
+  if (isDefault) {
+    const links: Record<string, string> = { Library: '/library', Finance: '/finance', Discipline: '/discipline' };
+    return (
+      <div className="p-6 space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/departments" className="text-slate-500"><ArrowLeft className="h-5 w-5" /></Link>
+          <h1 className="text-2xl font-bold text-slate-800">{dept.name}</h1>
+        </div>
+        <Card><CardContent className="py-12 text-center">
+          <Building2 className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-500 text-lg">{dept.name} is a core department.</p>
+          <Link href={links[dept.name]}><Button className="mt-4">Go to {dept.name} Module</Button></Link>
+        </CardContent></Card>
+      </div>
+    );
+  }
+
+  // Custom department - full dashboard
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/departments" className="text-slate-500 hover:text-slate-700"><ArrowLeft className="h-5 w-5" /></Link>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-800">{dept.name}</h1>
-          <p className="text-slate-500">{equipment.length} items · {activeIssues.length} issued</p>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Link href="/departments" className="text-slate-500"><ArrowLeft className="h-5 w-5" /></Link>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-800">{dept.name}</h1>
+            <p className="text-slate-500">{equipment.length} items · {activeIssues.length} issued · {overdueItems.length} overdue</p>
+          </div>
         </div>
       </div>
 
-      {isInventoryDept && (
-        <>
-          <div className="flex gap-2">
-            <Button variant={tab === 'inventory' ? 'default' : 'outline'} onClick={() => setTab('inventory')}><Package className="mr-2 h-4 w-4" /> Equipment</Button>
-            <Button variant={tab === 'issued' ? 'default' : 'outline'} onClick={() => setTab('issued')}>📤 Issued ({activeIssues.length})</Button>
-            <Button variant={tab === 'history' ? 'default' : 'outline'} onClick={() => setTab('history')}>📋 History</Button>
-          </div>
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
+        <Card><CardContent className="p-4 text-center"><Package className="h-5 w-5 mx-auto text-blue-600 mb-1" /><p className="text-2xl font-bold">{equipment.length}</p><p className="text-xs text-slate-500">Items</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><BookCheck className="h-5 w-5 mx-auto text-emerald-600 mb-1" /><p className="text-2xl font-bold">{activeIssues.length}</p><p className="text-xs text-slate-500">Issued</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><AlertCircle className="h-5 w-5 mx-auto text-amber-600 mb-1" /><p className="text-2xl font-bold">{overdueItems.length}</p><p className="text-xs text-slate-500">Overdue</p></CardContent></Card>
+        <Card><CardContent className="p-4 text-center"><History className="h-5 w-5 mx-auto text-purple-600 mb-1" /><p className="text-2xl font-bold">{issued.length}</p><p className="text-xs text-slate-500">Total Transactions</p></CardContent></Card>
+      </div>
 
-          {tab === 'inventory' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-1"><CardHeader><CardTitle><Plus className="h-5 w-5 inline mr-2" />Add Item</CardTitle></CardHeader>
-                <CardContent><form onSubmit={addEquipment} className="space-y-3">
-                  <Input value={name} onChange={e => setName(e.target.value)} placeholder="Item name *" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <Select value={category} onValueChange={setCategory}><SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent><SelectItem value="General">General</SelectItem><SelectItem value="Equipment">Equipment</SelectItem><SelectItem value="Tool">Tool</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent>
-                    </Select>
-                    <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min="1" placeholder="Qty" />
-                  </div>
-                  <Button type="submit" className="w-full">Add</Button>
-                </form></CardContent></Card>
-              <Card className="lg:col-span-2"><CardHeader><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} /></div></CardHeader>
-                <CardContent><div className="space-y-2">{filteredEquip.map(e => (
-                  <div key={e.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><div><p className="font-medium">{e.name}</p><p className="text-xs text-slate-500">{e.ref_no} · {e.category}</p></div><div className="flex items-center gap-3"><Badge className={e.available > 0 ? 'bg-emerald-100' : 'bg-red-100'}>{e.available}/{e.quantity}</Badge><Button variant="ghost" size="icon" className="text-red-500" onClick={() => deleteEquipment(e.id)}><Trash2 className="h-4 w-4" /></Button></div></div>
-                ))}</div></CardContent></Card>
-            </div>
-          )}
+      {/* Tabs */}
+      <div className="flex gap-2">
+        <Button variant={tab === 'inventory' ? 'default' : 'outline'} onClick={() => setTab('inventory')}><Package className="mr-2 h-4 w-4" />Inventory</Button>
+        <Button variant={tab === 'issued' ? 'default' : 'outline'} onClick={() => setTab('issued')}><BookCheck className="mr-2 h-4 w-4" />Issued ({activeIssues.length})</Button>
+        <Button variant={tab === 'history' ? 'default' : 'outline'} onClick={() => setTab('history')}><History className="mr-2 h-4 w-4" />History</Button>
+      </div>
 
-          {tab === 'issued' && (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <Card className="lg:col-span-1"><CardHeader><CardTitle>Issue Item</CardTitle></CardHeader>
-                <CardContent><form onSubmit={issueEquipment} className="space-y-3">
-                  <div className="space-y-1 relative"><Input placeholder="Search equipment..." value={equipSearch} onChange={e => setEquipSearch(e.target.value)} />
-                    {equipSearch && <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">{filteredForIssue.filter(e => e.available > 0).map(e => <button key={e.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b" onClick={() => { setSelectedEquip(e.id); setEquipSearch(`${e.ref_no} - ${e.name}`); }}>{e.ref_no} - {e.name} <Badge className="ml-2 text-xs">{e.available}</Badge></button>)}</div>}
-                  </div>
-                  <div className="space-y-1 relative"><Input placeholder="Search student..." value={studentSearch} onChange={e => searchStudents(e.target.value)} />
-                    {students.length > 0 && <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">{students.map(s => <button key={s.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm flex items-center gap-2" onClick={() => { setSelectedStudent(s); setStudentSearch(`${s.first_name} ${s.last_name}`); }}><Avatar className="h-6 w-6"><AvatarFallback className="text-xs">{s.first_name[0]}{s.last_name[0]}</AvatarFallback></Avatar>{s.first_name} {s.last_name} · G{s.grade}</button>)}</div>}
-                  </div>
-                  <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
-                  <Button type="submit" className="w-full">Issue</Button>
-                </form></CardContent></Card>
-              <Card className="lg:col-span-2"><CardHeader><CardTitle>Active Issues</CardTitle></CardHeader>
-                <CardContent><div className="space-y-2">{activeIssues.map(i => (
-                  <div key={i.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><div><p className="font-medium">{i.department_equipment?.name}</p><p className="text-xs text-slate-500">{i.students?.first_name} {i.students?.last_name} · Due: {i.due_date}</p></div><div className="flex gap-1"><Button size="sm" variant="outline" onClick={() => returnItem(i.id, i.equipment_id)}>Return</Button><Button size="sm" variant="outline" className="text-red-600" onClick={() => markLost(i.id)}>Lost</Button></div></div>
-                ))}</div></CardContent></Card>
-            </div>
-          )}
-
-          {tab === 'history' && (
-            <Card><CardHeader><CardTitle>History</CardTitle></CardHeader><CardContent><div className="space-y-2">{issued.map(i => (
-              <div key={i.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"><div><p className="font-medium">{i.department_equipment?.name}</p><p className="text-xs text-slate-500">{i.students?.first_name} {i.students?.last_name}</p></div><Badge className={i.status === 'returned' ? 'bg-emerald-100' : 'bg-red-100'}>{i.status}</Badge></div>
-            ))}</div></CardContent></Card>
-          )}
-        </>
+      {tab === 'inventory' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader><CardTitle><Plus className="h-5 w-5 inline mr-2" />Add Item</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={addEquipment} className="space-y-3">
+                <Input value={name} onChange={e => setName(e.target.value)} placeholder="Item name *" />
+                <div className="grid grid-cols-2 gap-3">
+                  <Select value={category} onValueChange={setCategory}><SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="General">General</SelectItem><SelectItem value="Equipment">Equipment</SelectItem><SelectItem value="Tool">Tool</SelectItem><SelectItem value="Other">Other</SelectItem></SelectContent></Select>
+                  <Input type="number" value={quantity} onChange={e => setQuantity(e.target.value)} min="1" placeholder="Qty" />
+                <div className="space-y-1"><Label>Value (KES)</Label><Input type="number" value={itemValue} onChange={e => setItemValue(e.target.value)} placeholder="e.g., 500" /></div>
+                </div>
+                <Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Add Item'}</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2">
+            <CardHeader><div className="relative"><Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" /><Input placeholder="Search items..." className="pl-10" value={search} onChange={e => setSearch(e.target.value)} /></div></CardHeader>
+            <CardContent>
+              <Table><TableHeader><TableRow><TableHead>Ref</TableHead><TableHead>Name</TableHead><TableHead>Category</TableHead><TableHead>Available</TableHead><TableHead></TableHead></TableRow></TableHeader>
+                <TableBody>{filteredEquip.map(e => (
+                  <TableRow key={e.id}><TableCell><Badge variant="outline" className="font-mono text-xs">{e.ref_no}</Badge></TableCell><TableCell className="font-medium">{e.name}</TableCell><TableCell className="text-slate-500">{e.category}</TableCell><TableCell><Badge className={e.available > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>{e.available}/{e.quantity}</Badge></TableCell><TableCell><Button variant="ghost" size="icon" className="text-red-500" onClick={() => deleteEquipment(e.id)}><Trash2 className="h-4 w-4" /></Button></TableCell></TableRow>
+                ))}</TableBody></Table>
+            </CardContent>
+          </Card>
+        </div>
       )}
 
-      {isClearanceDept && (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <Package className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-            <p className="text-slate-500 text-lg">{dept.name} is a clearance department.</p>
-            <p className="text-slate-400 text-sm mt-1">Use the {dept.name === 'Library' ? 'Library' : dept.name === 'Finance' ? 'Finance' : 'Discipline'} module for detailed management.</p>
-          </CardContent>
-        </Card>
+      {tab === 'issued' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Card className="lg:col-span-1">
+            <CardHeader><CardTitle><BookCheck className="h-5 w-5 inline mr-2" />Issue Item</CardTitle></CardHeader>
+            <CardContent>
+              <form onSubmit={issueEquipment} className="space-y-3">
+                <div className="relative"><Label>Item *</Label><Input placeholder="Search equipment..." value={equipSearch} onChange={e => setEquipSearch(e.target.value)} />
+                  {equipSearch && <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">{filteredForIssue.filter(e => e.available > 0).map(e => <button key={e.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm border-b" onClick={() => { setSelectedEquip(e.id); setEquipSearch(`${e.ref_no} - ${e.name}`); }}>{e.ref_no} - {e.name} <Badge className="ml-2 text-xs">{e.available}</Badge></button>)}</div>}
+                  {selectedEquip && <p className="text-xs text-emerald-600 mt-1">✅ Selected</p>}
+                </div>
+                <div className="relative"><Label>Student *</Label><Input placeholder="Search student..." value={studentSearch} onChange={e => searchStudents(e.target.value)} />
+                  {students.length > 0 && !selectedStudent && <div className="absolute z-50 w-full bg-white border rounded-lg shadow-lg max-h-36 overflow-y-auto">{students.map(s => <button key={s.id} type="button" className="w-full text-left px-3 py-2 hover:bg-slate-50 text-sm flex items-center gap-2" onClick={() => selectStudent(s)}><Avatar className="h-6 w-6"><AvatarFallback className="text-xs">{s.first_name?.[0]}{s.last_name?.[0]}</AvatarFallback></Avatar>{s.first_name} {s.last_name} · G{s.grade}</button>)}</div>}
+                  {selectedStudent && <p className="text-xs text-emerald-600 mt-1">✅ {selectedStudent.first_name} {selectedStudent.last_name}</p>}
+                </div>
+                <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} />
+                <Button type="submit" className="w-full" disabled={isLoading}>Issue</Button>
+              </form>
+            </CardContent>
+          </Card>
+          <Card className="lg:col-span-2">
+            <CardHeader><CardTitle>Active Issues ({activeIssues.length})</CardTitle></CardHeader>
+            <CardContent>
+              <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Student</TableHead><TableHead>Due</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                <TableBody>{activeIssues.map(i => (
+                  <TableRow key={i.id} className={new Date(i.due_date) < new Date() ? 'bg-red-50' : ''}>
+                    <TableCell><p className="font-medium text-sm">{i.department_equipment?.name}</p><p className="text-xs text-slate-400">{i.department_equipment?.ref_no}</p></TableCell>
+                    <TableCell><p className="text-sm">{i.students?.first_name} {i.students?.last_name}</p></TableCell>
+                    <TableCell className="text-xs">{i.due_date}</TableCell>
+                    <TableCell>{new Date(i.due_date) < new Date() ? <Badge className="bg-red-100 text-red-700"><AlertCircle className="h-3 w-3 mr-1" />Overdue</Badge> : <Badge className="bg-blue-100">Issued</Badge>}</TableCell>
+                    <TableCell><div className="flex gap-1"><Button size="sm" variant="outline" className="text-emerald-600 text-xs" onClick={() => returnItem(i.id, i.equipment_id)}>Return</Button><Button size="sm" variant="outline" className="text-red-600 text-xs" onClick={() => markLost(i.id)}>Lost</Button></div></TableCell>
+                  </TableRow>
+                ))}</TableBody></Table>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {tab === 'history' && (
+        <Card><CardHeader><CardTitle>Transaction History</CardTitle></CardHeader>
+          <CardContent>
+            <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead>Student</TableHead><TableHead>Issued</TableHead><TableHead>Returned</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+              <TableBody>{issued.map(i => (
+                <TableRow key={i.id}><TableCell>{i.department_equipment?.name}</TableCell><TableCell>{i.students?.first_name} {i.students?.last_name}</TableCell><TableCell className="text-xs">{i.issued_date}</TableCell><TableCell className="text-xs">{i.return_date || '-'}</TableCell><TableCell><Badge className={i.status === 'returned' ? 'bg-emerald-100' : 'bg-red-100'}>{i.status}</Badge></TableCell></TableRow>
+              ))}</TableBody></Table>
+          </CardContent></Card>
       )}
     </div>
   );

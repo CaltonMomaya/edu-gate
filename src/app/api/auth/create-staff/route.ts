@@ -11,24 +11,26 @@ export async function POST(request: Request) {
 
     const supabase = await createServerSupabaseAdminClient();
 
-    // Create auth user
+    // Create auth user with explicit password
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
       email,
-      password,
+      password: password, // TSC number
       email_confirm: true,
       user_metadata: {
         full_name: fullName,
         school_id: schoolId,
         role,
-        tsc_number: tscNumber || '',
+        tsc_number: tscNumber || password,
       },
     });
 
     if (authError) {
-      if (authError.message?.includes('already exists')) {
-        return NextResponse.json({ message: 'A user with this email already exists' }, { status: 400 });
-      }
-      return NextResponse.json({ message: authError.message }, { status: 500 });
+      console.error('Auth error:', authError);
+      return NextResponse.json({ 
+        message: authError.message?.includes('already exists') 
+          ? 'A user with this email already exists' 
+          : 'Failed to create account: ' + authError.message 
+      }, { status: 400 });
     }
 
     // Create user profile
@@ -42,11 +44,13 @@ export async function POST(request: Request) {
     });
 
     if (userError) {
+      console.error('Profile error:', userError);
       return NextResponse.json({ message: userError.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true, userId: authUser.user.id });
   } catch (error: any) {
+    console.error('Staff error:', error);
     return NextResponse.json({ message: error.message }, { status: 500 });
   }
 }

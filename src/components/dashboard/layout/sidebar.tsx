@@ -17,6 +17,7 @@ import {
   MessageSquare, Download, Activity, HelpCircle, History, Database,
   Shield, Palette, Bell,
   Play,
+  CheckCircle,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 
@@ -61,6 +62,7 @@ const allNavigation: NavItem[] = [
   { name: 'Data Export', href: '/export', icon: Download, roles: ['admin'] },
   { name: 'System Health', href: '/health', icon: Activity, roles: ['admin'] },
   { name: "System Tests", href: "/testing", icon: Play, roles: ["admin"] },
+  { name: "Deploy Checklist", href: "/deploy", icon: CheckCircle, roles: ["admin"] },
   { name: 'Help & Guides', href: '/help', icon: HelpCircle },
   { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['admin', 'principal'] },
   { separator: true },

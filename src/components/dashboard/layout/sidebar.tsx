@@ -19,6 +19,7 @@ import {
   Play,
   CheckCircle,
   PieChart, BarChart3,
+  Rocket,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 
@@ -64,6 +65,7 @@ const allNavigation: NavItem[] = [
   { name: 'System Health', href: '/health', icon: Activity, roles: ['admin'] },
   { name: "System Tests", href: "/testing", icon: Play, roles: ["admin"] },
   { name: "Deploy Checklist", href: "/deploy", icon: CheckCircle, roles: ["admin"] },
+  { name: "Launch Prep", href: "/launch", icon: Rocket, roles: ["admin"] },
   { name: "Audit Report", href: "/audit-report", icon: PieChart, roles: ["admin"] },
   { name: 'Help & Guides', href: '/help', icon: HelpCircle },
   { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['admin', 'principal'] },

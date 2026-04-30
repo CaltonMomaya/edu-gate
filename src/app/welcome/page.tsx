@@ -42,9 +42,9 @@ export default function LandingPage() {
       {/* Hero */}
       <section className="bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white py-20">
         <div className="max-w-6xl mx-auto px-6 text-center">
-          <Badge className="mb-4 bg-white/10 text-white border-white/20">🇰🇪 Built for Kenyan Schools</Badge>
+          <Badge className="mb-4 bg-white/10 text-white border-white/20">🇰🇪 🇰🇪 Trusted by Schools Across Kenya</Badge>
           <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-6">
-            The Complete School<br />Management Platform
+            The #1 School Management<br />Platform in Kenya
           </h1>
           <p className="text-xl text-slate-300 mb-8 max-w-2xl mx-auto">
             From student admission to graduation clearance. Track fees, manage discipline, 

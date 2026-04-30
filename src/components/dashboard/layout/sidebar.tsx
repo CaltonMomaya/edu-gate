@@ -9,18 +9,18 @@ import { Separator } from '@/components/ui/separator';
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { createClient } from '@/lib/supabase/client';
+import { useBranding } from '@/lib/branding';
 import {
-  FileText,
-  Shield,
-  GraduationCap, Building2, TrendingUp, LayoutDashboard, Users, BookOpen,
+  GraduationCap, FileText, TrendingUp, LayoutDashboard, Users, BookOpen,
   DollarSign, Scale, DoorOpen, ClipboardCheck, Settings,
   Gamepad2, Music, FlaskConical, X, Home, CreditCard, UserPlus,
   MessageSquare, Download, Activity, HelpCircle, History, Database,
+  Shield, Palette, Bell,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 
 interface NavItem {
-  name?: string;
+  name: string;
   href?: string;
   icon?: any;
   indent?: boolean;
@@ -32,7 +32,7 @@ const allNavigation: NavItem[] = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard },
   { name: 'Analytics', href: '/analytics', icon: TrendingUp, roles: ['admin', 'principal'] },
   { name: 'Students', href: '/students', icon: Users },
-  { name: "Report Cards", href: "/report-cards", icon: FileText, roles: ["admin", "principal", "teacher", "class_teacher"] },
+  { name: 'Report Cards', href: '/report-cards', icon: FileText, roles: ['admin', 'principal', 'teacher', 'class_teacher'] },
   { name: 'Exams & Results', href: '/exams', icon: BookOpen, roles: ['admin', 'principal', 'teacher', 'class_teacher'] },
   { name: 'Teachers & Staff', href: '/teachers', icon: UserPlus, roles: ['admin'] },
   { name: 'Classes & Streams', href: '/classes', icon: Home },
@@ -59,14 +59,14 @@ const allNavigation: NavItem[] = [
   { name: 'SMS', href: '/sms', icon: MessageSquare, roles: ['admin'] },
   { name: 'Data Export', href: '/export', icon: Download, roles: ['admin'] },
   { name: 'System Health', href: '/health', icon: Activity, roles: ['admin'] },
-  { separator: true },
   { name: 'Help & Guides', href: '/help', icon: HelpCircle },
   { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['admin', 'principal'] },
-  { name: 'Backup & Restore', href: '/backup', icon: Database, roles: ['admin'] },
   { separator: true },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
-  { name: "Security", href: "/security", icon: Shield, roles: ["admin"] },
-  { name: "Bulk Operations", href: "/bulk", icon: TrendingUp, roles: ["admin"] },
+  { name: 'Security', href: '/security', icon: Shield, roles: ['admin'] },
+  { name: 'Bulk Operations', href: '/bulk', icon: TrendingUp, roles: ['admin'] },
+  { name: 'Notifications', href: '/notifications', icon: Bell, roles: ['admin'] },
+  { name: 'Branding', href: '/branding', icon: Palette, roles: ['admin'] },
   { name: 'Subscription', href: '/subscription', icon: CreditCard, roles: ['admin'] },
 ];
 
@@ -80,24 +80,25 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const supabase = createClient();
   const [userRole, setUserRole] = useState<UserRole>('admin');
   const [navigation, setNavigation] = useState<NavItem[]>(allNavigation);
+  const { primaryColor, secondaryColor, logoUrl, schoolName } = useBranding();
 
   useEffect(() => { loadUserRole(); }, []);
-  // Load custom departments for assigned staff
+
   useEffect(() => {
     async function loadDepts() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-      const { data: assignedDepts } = await supabase.from("departments").select("id, name").eq("assigned_officer", user.id);
+      const { data: assignedDepts } = await supabase.from('departments').select('id, name').eq('assigned_officer', user.id);
       if (assignedDepts && assignedDepts.length > 0) {
-        const defaults = ["Library", "Finance", "Discipline"];
+        const defaults = ['Library', 'Finance', 'Discipline'];
         const custom = assignedDepts.filter(d => !defaults.includes(d.name));
         if (custom.length > 0) {
           const deptNav = custom.map(d => ({ name: d.name, href: `/departments/${d.id}`, icon: Building2 }));
-          setNavigation(prev => { const withoutDepts = prev.filter(i => !custom.find(d => d.name === i.name)); return [...withoutDepts, { separator: true }, ...deptNav]; });
+          setNavigation(prev => { const without = prev.filter(i => !custom.find(d => d.name === i.name)); return [...without, { separator: true }, ...deptNav]; });
         }
       }
     }
-    if (userRole && userRole !== "admin") loadDepts();
+    if (userRole && userRole !== 'admin') loadDepts();
   }, [userRole]);
 
   async function loadUserRole() {
@@ -124,47 +125,43 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const handleNavClick = () => { if (window.innerWidth < 1024) onClose(); };
 
-  const NavContent = () => (
-    <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-      {navigation.map((item, index) => {
-        if (item.separator) return <Separator key={`sep-${index}`} className="my-3 bg-slate-700/50" />;
-        if (!item.href) return null;
-        const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-        return (
-          <Link key={item.name} href={item.href || ''} onClick={handleNavClick}
-            className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-              item.indent && 'ml-4',
-              isActive ? 'bg-gradient-to-r from-blue-600/30 to-emerald-600/30 text-white shadow-sm' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white')}>
-            {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}{item.name}
-          </Link>
-        );
-      })}
-    </nav>
-  );
-
-  const BrandLogo = () => (
-    <Link href="/overview" className="flex items-center gap-2" onClick={handleNavClick}>
-      <div className="bg-gradient-to-br from-blue-500 to-emerald-500 p-2 rounded-lg"><GraduationCap className="h-5 w-5 text-white" /></div>
-      <span className="text-lg font-bold"><span className="text-blue-400">EDU</span><span className="text-emerald-400"> GATE</span></span>
-    </Link>
-  );
-
   const sidebarContent = (
-    <div className="flex h-full flex-col bg-gradient-to-b from-slate-900 to-slate-800 text-white">
-      <div className="flex items-center justify-between h-16 px-4 border-b border-slate-700/50">
-        <BrandLogo />
-        <Button variant="ghost" size="icon" className="lg:hidden text-white hover:text-slate-200 hover:bg-slate-700" onClick={onClose}><X className="h-5 w-5" /></Button>
+    <div className="flex h-full flex-col text-white" style={{ background: `linear-gradient(to bottom, ${primaryColor}E6, ${secondaryColor}E6)` }}>
+      <div className="flex items-center justify-between h-16 px-4 border-b border-white/10">
+        <Link href="/overview" className="flex items-center gap-2" onClick={handleNavClick}>
+          <div className="bg-white/20 p-2 rounded-lg">
+            <GraduationCap className="h-5 w-5 text-white" />
+          </div>
+          <span className="text-lg font-bold text-white">{schoolName || 'EDU GATE'}</span>
+        </Link>
+        <Button variant="ghost" size="icon" className="lg:hidden text-white" onClick={onClose}><X className="h-5 w-5" /></Button>
       </div>
-      <NavContent />
-      <div className="p-4 border-t border-slate-700/50"><div className="text-xs text-slate-500 text-center">© 2026 EDU GATE</div></div>
+
+      <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
+        {navigation.map((item, index) => {
+          if (item.separator) return <Separator key={`sep-${index}`} className="my-3 bg-white/10" />;
+          if (!item.href) return null;
+          const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+          return (
+            <Link key={item.name} href={item.href} onClick={handleNavClick}
+              className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
+                item.indent && 'ml-4',
+                isActive ? 'bg-white/20 text-white shadow-sm' : 'text-white/80 hover:bg-white/10 hover:text-white')}>
+              {item.icon && <item.icon className="h-4 w-4" />}{item.name}
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className="p-4 border-t border-white/10"><div className="text-xs text-white/60 text-center">© 2026 {schoolName || 'EDU GATE'}</div></div>
     </div>
   );
 
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent side="left" className="p-0 w-72 bg-slate-900 border-r-0" onPointerDownOutside={onClose} onEscapeKeyDown={onClose}>
-          <VisuallyHidden><SheetTitle>Navigation Menu</SheetTitle></VisuallyHidden>
+        <SheetContent side="left" className="p-0 w-72 border-r-0" style={{ background: primaryColor }}>
+          <VisuallyHidden><SheetTitle>Navigation</SheetTitle></VisuallyHidden>
           {sidebarContent}
         </SheetContent>
       </Sheet>

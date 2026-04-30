@@ -18,12 +18,15 @@ import {
   Shield, Palette, Bell,
   Play,
   CheckCircle,
-  PieChart, BarChart3,
+  
   Rocket,
+  PieChart,
+  Building2,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 
 interface NavItem {
+  "data-tour"?: string;
   name: string;
   href?: string;
   icon?: any;
@@ -33,33 +36,33 @@ interface NavItem {
 }
 
 const allNavigation: NavItem[] = [
-  { name: "Overview", href: "/overview", icon: LayoutDashboard, "data-tour": "sidebar-overview" },
+  { name: "Overview", href: "/overview", icon: LayoutDashboard },
   { name: 'Analytics', href: '/analytics', icon: TrendingUp, roles: ['admin', 'principal'] },
-  { name: "Students", href: "/students", icon: Users, "data-tour": "sidebar-students" },
+  { name: "Students", href: "/students", icon: Users },
   { name: 'Report Cards', href: '/report-cards', icon: FileText, roles: ['admin', 'principal', 'teacher', 'class_teacher'] },
   { name: 'Exams & Results', href: '/exams', icon: BookOpen, roles: ['admin', 'principal', 'teacher', 'class_teacher'] },
   { name: 'Teachers & Staff', href: '/teachers', icon: UserPlus, roles: ['admin'] },
   { name: 'Classes & Streams', href: '/classes', icon: Home },
   { name: 'Houses', href: '/houses', icon: Home },
-  { separator: true },
-  { name: "Finance", href: "/finance", icon: DollarSign, "data-tour": "sidebar-finance", roles: ['admin', 'bursar', 'principal'] },
+  { name: "", separator: true },
+  { name: "Finance", href: "/finance", icon: DollarSign, roles: ['admin', 'bursar', 'principal'] },
   { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Payments', href: '/finance/payments', icon: DollarSign, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Reports', href: '/finance/reports', icon: BookOpen, indent: true, roles: ['admin', 'bursar', 'principal'] },
-  { separator: true },
+  { name: "", separator: true },
   { name: 'Library', href: '/library', icon: BookOpen, roles: ['admin', 'librarian'] },
   { name: 'Games & Sports', href: '/games', icon: Gamepad2, roles: ['admin', 'games_master'] },
   { name: 'Music & Drama', href: '/music', icon: Music, roles: ['admin', 'music_teacher'] },
   { name: 'Departments', href: '/departments', icon: FlaskConical, roles: ['admin'] },
-  { separator: true },
+  { name: "", separator: true },
   { name: 'Discipline', href: '/discipline', icon: Scale, roles: ['admin', 'deputy'] },
   { name: 'Black Book', href: '/discipline/black-book', icon: Scale, indent: true, roles: ['admin', 'deputy'] },
-  { separator: true },
+  { name: "", separator: true },
   { name: 'Leave Management', href: '/leave', icon: DoorOpen, roles: ['admin', 'deputy', 'class_teacher'] },
-  { separator: true },
-  { name: "Clearance", href: "/clearance", icon: ClipboardCheck, "data-tour": "sidebar-clearance" },
+  { name: "", separator: true },
+  { name: "Clearance", href: "/clearance", icon: ClipboardCheck },
   { name: 'Alumni', href: '/alumni', icon: GraduationCap },
-  { separator: true },
+  { name: "", separator: true },
   { name: 'SMS', href: '/sms', icon: MessageSquare, roles: ['admin'] },
   { name: 'Data Export', href: '/export', icon: Download, roles: ['admin'] },
   { name: 'System Health', href: '/health', icon: Activity, roles: ['admin'] },
@@ -69,7 +72,7 @@ const allNavigation: NavItem[] = [
   { name: "Audit Report", href: "/audit-report", icon: PieChart, roles: ["admin"] },
   { name: 'Help & Guides', href: '/help', icon: HelpCircle },
   { name: 'Audit Logs', href: '/audit-logs', icon: History, roles: ['admin', 'principal'] },
-  { separator: true },
+  { name: "", separator: true },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
   { name: 'Security', href: '/security', icon: Shield, roles: ['admin'] },
   { name: 'Bulk Operations', href: '/bulk', icon: TrendingUp, roles: ['admin'] },
@@ -102,7 +105,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         const custom = assignedDepts.filter(d => !defaults.includes(d.name));
         if (custom.length > 0) {
           const deptNav = custom.map(d => ({ name: d.name, href: `/departments/${d.id}`, icon: Building2 }));
-          setNavigation(prev => { const without = prev.filter(i => !custom.find(d => d.name === i.name)); return [...without, { separator: true }, ...deptNav]; });
+          setNavigation(prev => { const without = prev.filter(i => !custom.find(d => d.name === i.name)); return [...without, { name: "", separator: true }, ...deptNav]; });
         }
       }
     }

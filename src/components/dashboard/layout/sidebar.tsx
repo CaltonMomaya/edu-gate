@@ -32,16 +32,16 @@ interface NavItem {
 }
 
 const allNavigation: NavItem[] = [
-  { name: 'Overview', href: '/overview', icon: LayoutDashboard },
+  { name: "Overview", href: "/overview", icon: LayoutDashboard, "data-tour": "sidebar-overview" },
   { name: 'Analytics', href: '/analytics', icon: TrendingUp, roles: ['admin', 'principal'] },
-  { name: 'Students', href: '/students', icon: Users },
+  { name: "Students", href: "/students", icon: Users, "data-tour": "sidebar-students" },
   { name: 'Report Cards', href: '/report-cards', icon: FileText, roles: ['admin', 'principal', 'teacher', 'class_teacher'] },
   { name: 'Exams & Results', href: '/exams', icon: BookOpen, roles: ['admin', 'principal', 'teacher', 'class_teacher'] },
   { name: 'Teachers & Staff', href: '/teachers', icon: UserPlus, roles: ['admin'] },
   { name: 'Classes & Streams', href: '/classes', icon: Home },
   { name: 'Houses', href: '/houses', icon: Home },
   { separator: true },
-  { name: 'Finance', href: '/finance', icon: DollarSign, roles: ['admin', 'bursar', 'principal'] },
+  { name: "Finance", href: "/finance", icon: DollarSign, "data-tour": "sidebar-finance", roles: ['admin', 'bursar', 'principal'] },
   { name: 'Fees Structure', href: '/finance/fees', icon: CreditCard, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Payments', href: '/finance/payments', icon: DollarSign, indent: true, roles: ['admin', 'bursar'] },
   { name: 'Reports', href: '/finance/reports', icon: BookOpen, indent: true, roles: ['admin', 'bursar', 'principal'] },
@@ -56,7 +56,7 @@ const allNavigation: NavItem[] = [
   { separator: true },
   { name: 'Leave Management', href: '/leave', icon: DoorOpen, roles: ['admin', 'deputy', 'class_teacher'] },
   { separator: true },
-  { name: 'Clearance', href: '/clearance', icon: ClipboardCheck },
+  { name: "Clearance", href: "/clearance", icon: ClipboardCheck, "data-tour": "sidebar-clearance" },
   { name: 'Alumni', href: '/alumni', icon: GraduationCap },
   { separator: true },
   { name: 'SMS', href: '/sms', icon: MessageSquare, roles: ['admin'] },
@@ -149,7 +149,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
           if (!item.href) return null;
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
           return (
-            <Link key={item.name} href={item.href} onClick={handleNavClick}
+            <Link key={item.name} href={item.href} data-tour={item["data-tour"]} onClick={handleNavClick}
               className={cn('flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all',
                 item.indent && 'ml-4',
                 isActive ? 'bg-white/20 text-white shadow-sm' : 'text-white/80 hover:bg-white/10 hover:text-white')}>

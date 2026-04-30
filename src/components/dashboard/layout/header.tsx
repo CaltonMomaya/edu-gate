@@ -47,8 +47,8 @@ export function Header({ onMenuClick }: HeaderProps) {
           <div className="md:hidden"><h2 className="text-sm font-semibold text-slate-800">{schoolName || 'EDU GATE'}</h2></div>
         </div>
         <div className="flex items-center gap-3">
-          <NotificationBell />
-          <DropdownMenu>
+          <div data-tour="header-notifications"><NotificationBell /></div>
+          <div data-tour="header-profile"><DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">
                 <Avatar className="h-8 w-8" style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}>
@@ -65,7 +65,7 @@ export function Header({ onMenuClick }: HeaderProps) {
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-red-600"><LogOut className="mr-2 h-4 w-4" />Sign out</DropdownMenuItem>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu></div>
         </div>
       </div>
     </header>

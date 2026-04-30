@@ -162,7 +162,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
-        <SheetContent side="left" className="p-0 w-72 border-r-0" style={{ background: primaryColor }}>
+        <SheetContent side="left" onPointerDownOutside={onClose} className="p-0 w-72 border-r-0" style={{ background: primaryColor }}>
           <VisuallyHidden><SheetTitle>Navigation</SheetTitle></VisuallyHidden>
           {sidebarContent}
         </SheetContent>

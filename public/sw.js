@@ -1,10 +1,12 @@
-const CACHE_NAME = 'edu-gate-v1';
+const CACHE_NAME = 'edu-gate-v2';
 
 const urlsToCache = [
   '/',
   '/login',
   '/register',
   '/welcome',
+  '/parent',
+  '/offline',
   '/manifest.json',
 ];
 
@@ -16,7 +18,13 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => response || fetch(event.request))
+    fetch(event.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(event.request).then(response => response || caches.match('/offline')))
   );
 });
 

@@ -10,6 +10,7 @@ import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { createClient } from '@/lib/supabase/client';
 import {
+  FileText,
   GraduationCap, Building2, TrendingUp, LayoutDashboard, Users, BookOpen,
   DollarSign, Scale, DoorOpen, ClipboardCheck, Settings,
   Gamepad2, Music, FlaskConical, X, Home, CreditCard, UserPlus,
@@ -30,6 +31,7 @@ const allNavigation: NavItem[] = [
   { name: 'Overview', href: '/overview', icon: LayoutDashboard },
   { name: 'Analytics', href: '/analytics', icon: TrendingUp, roles: ['admin', 'principal'] },
   { name: 'Students', href: '/students', icon: Users },
+  { name: "Report Cards", href: "/report-cards", icon: FileText, roles: ["admin", "principal", "teacher", "class_teacher"] },
   { name: 'Exams & Results', href: '/exams', icon: BookOpen, roles: ['admin', 'principal', 'teacher', 'class_teacher'] },
   { name: 'Teachers & Staff', href: '/teachers', icon: UserPlus, roles: ['admin'] },
   { name: 'Classes & Streams', href: '/classes', icon: Home },

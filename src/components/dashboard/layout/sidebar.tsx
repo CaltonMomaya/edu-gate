@@ -11,6 +11,7 @@ import { VisuallyHidden } from '@radix-ui/react-visually-hidden';
 import { createClient } from '@/lib/supabase/client';
 import {
   FileText,
+  Shield,
   GraduationCap, Building2, TrendingUp, LayoutDashboard, Users, BookOpen,
   DollarSign, Scale, DoorOpen, ClipboardCheck, Settings,
   Gamepad2, Music, FlaskConical, X, Home, CreditCard, UserPlus,
@@ -64,6 +65,7 @@ const allNavigation: NavItem[] = [
   { name: 'Backup & Restore', href: '/backup', icon: Database, roles: ['admin'] },
   { separator: true },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
+  { name: "Security", href: "/security", icon: Shield, roles: ["admin"] },
   { name: 'Subscription', href: '/subscription', icon: CreditCard, roles: ['admin'] },
 ];
 

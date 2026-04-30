@@ -1,4 +1,5 @@
 import { Shell } from '@/components/dashboard/layout/shell';
+import { SessionTimer } from "@/components/shared/session-timer";
 
 export default function DashboardLayout({
   children,
@@ -6,4 +7,5 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return <Shell>{children}</Shell>;
+      <SessionTimer />
 }

@@ -66,6 +66,7 @@ const allNavigation: NavItem[] = [
   { separator: true },
   { name: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
   { name: "Security", href: "/security", icon: Shield, roles: ["admin"] },
+  { name: "Bulk Operations", href: "/bulk", icon: TrendingUp, roles: ["admin"] },
   { name: 'Subscription', href: '/subscription', icon: CreditCard, roles: ['admin'] },
 ];
 

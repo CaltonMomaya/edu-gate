@@ -51,8 +51,9 @@ export function Header({ onMenuClick }: HeaderProps) {
           <div data-tour="header-profile"><DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">
-                <Avatar className="h-8 w-8" style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}>
-                  <AvatarFallback className="text-white text-sm">{userName?.charAt(0)?.toUpperCase() || 'A'}</AvatarFallback>
+                <Avatar className="h-8 w-8">
+                  <AvatarImage src={logoUrl || ''} />
+                  <AvatarFallback className="text-white text-sm" style={{ background: `linear-gradient(to bottom right, ${primaryColor}, ${secondaryColor})` }}>{userName?.charAt(0)?.toUpperCase() || 'A'}</AvatarFallback>
                 </Avatar>
                 <div className="hidden md:block text-left"><p className="text-sm font-medium">{userName || 'Admin'}</p><p className="text-xs text-slate-500">{roleLabel}</p></div>
               </Button>

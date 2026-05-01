@@ -1,4 +1,5 @@
 'use client';
+import { LanguageSelector } from "@/components/shared/language-selector";
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -47,7 +48,8 @@ export function Header({ onMenuClick }: HeaderProps) {
           <div className="md:hidden"><h2 className="text-sm font-semibold text-slate-800">{schoolName || 'EDU GATE'}</h2></div>
         </div>
         <div className="flex items-center gap-3">
-          <div data-tour="header-notifications"><NotificationBell /></div>
+          <div data-tour="header-notifications"><NotificationBell />
+          <LanguageSelector /></div>
           <div data-tour="header-profile"><DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center gap-2 px-2">

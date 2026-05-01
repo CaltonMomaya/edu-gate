@@ -2,6 +2,7 @@ import { Shell } from '@/components/dashboard/layout/shell';
 import { SessionTimer } from '@/components/shared/session-timer';
 import { BrandingProvider } from '@/lib/branding';
 import { InteractiveTour } from '@/components/shared/interactive-tour';
+import { LanguageSelector } from '@/components/shared/language-selector';
 
 export default function DashboardLayout({
   children,

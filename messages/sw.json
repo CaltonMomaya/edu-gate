@@ -1,0 +1,69 @@
+{
+  "common": {
+    "dashboard": "Dashibodi",
+    "students": "Wanafunzi",
+    "finance": "Fedha",
+    "clearance": "Kusafisha",
+    "settings": "Mipangilio",
+    "logout": "Toka",
+    "save": "Hifadhi",
+    "cancel": "Ghairi",
+    "delete": "Futa",
+    "edit": "Hariri",
+    "add": "Ongeza",
+    "search": "Tafuta",
+    "loading": "Inapakia...",
+    "noData": "Hakuna data"
+  },
+  "auth": {
+    "login": "Ingia",
+    "register": "Jisajili",
+    "email": "Barua pepe",
+    "password": "Nenosiri",
+    "forgotPassword": "Umesahau nenosiri?",
+    "loginSuccess": "Umeingia kwa mafanikio",
+    "loginFailed": "Kuingia kumeshindikana"
+  },
+  "students": {
+    "addStudent": "Ongeza Mwanafunzi",
+    "studentList": "Orodha ya Wanafunzi",
+    "firstName": "Jina la Kwanza",
+    "lastName": "Jina la Mwisho",
+    "admissionNumber": "Nambari ya Kujiunga",
+    "grade": "Darasa",
+    "stream": "Mkondo",
+    "status": "Hali",
+    "active": "Hai",
+    "alumni": "Alumni",
+    "transferred": "Kuhamishwa"
+  },
+  "finance": {
+    "fees": "Ada",
+    "payments": "Malipo",
+    "reports": "Ripoti",
+    "totalCharged": "Jumla ya Kugawanywa",
+    "totalPaid": "Jumla ya Kulipwa",
+    "balance": "Salio",
+    "outstanding": "Salio"
+  },
+  "clearance": {
+    "clearance": "Kusafisha",
+    "clearanceRoute": "Njia ya Kusafisha",
+    "cleared": "Imeondolewa",
+    "blocked": "Imezuiliwa",
+    "pending": "Inasubiri",
+    "issueCertificate": "Toa Hati"
+  },
+  "errors": {
+    "generic": "Hitilafu imetokea",
+    "network": "Hitilafu ya mtandao",
+    "staff": "Wafanyakazi",
+    "revenue": "Mapato",
+    "recent": "Hivi karibuni",
+    "recentPayments": "Malipo ya hivi karibuni",
+    "library": {
+      "books": "Vitabu"
+    },
+    "unauthorized": "Huna ruhusa"
+  }
+}

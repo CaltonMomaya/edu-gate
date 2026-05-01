@@ -1,0 +1,69 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "students": "Students",
+    "finance": "Finance",
+    "clearance": "Clearance",
+    "settings": "Settings",
+    "logout": "Logout",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "add": "Add",
+    "search": "Search",
+    "loading": "Loading...",
+    "noData": "No data found"
+  },
+  "auth": {
+    "login": "Login",
+    "register": "Register",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "loginSuccess": "Logged in successfully",
+    "loginFailed": "Login failed"
+  },
+  "students": {
+    "addStudent": "Add Student",
+    "studentList": "Student List",
+    "firstName": "First Name",
+    "lastName": "Last Name",
+    "admissionNumber": "Admission Number",
+    "grade": "Grade",
+    "stream": "Stream",
+    "status": "Status",
+    "active": "Active",
+    "alumni": "Alumni",
+    "transferred": "Transferred"
+  },
+  "finance": {
+    "fees": "Fees",
+    "payments": "Payments",
+    "reports": "Reports",
+    "totalCharged": "Total Charged",
+    "totalPaid": "Total Paid",
+    "balance": "Balance",
+    "outstanding": "Outstanding"
+  },
+  "clearance": {
+    "clearance": "Clearance",
+    "clearanceRoute": "Clearance Route",
+    "cleared": "Cleared",
+    "blocked": "Blocked",
+    "pending": "Pending",
+    "issueCertificate": "Issue Certificate"
+  },
+  "errors": {
+    "generic": "Something went wrong",
+    "network": "Network error",
+    "staff": "Staff",
+    "revenue": "Revenue",
+    "recent": "Recent",
+    "recentPayments": "Recent Payments",
+    "library": {
+      "books": "Books"
+    },
+    "unauthorized": "You are not authorized"
+  }
+}

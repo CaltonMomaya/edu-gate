@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
-import { MessageSquare, Send, Users, Search, Loader2, History, Phone, Plus } from 'lucide-react';
+import { MessageSquare, Send, FileText, Users, Search, Loader2, History, Phone, Plus } from 'lucide-react';
 import { sendSms } from '@/lib/sms/send';
 
 interface SmsLog {
@@ -84,6 +84,7 @@ export default function SmsPage() {
           <Badge className="bg-blue-100 text-blue-700 text-lg px-4 py-2"><MessageSquare className="h-4 w-4 mr-2" />{smsBalance} credits</Badge>
           <Link href="/sms/topup"><Button size="sm" variant="outline"><Plus className="h-3 w-3 mr-1" /> Top Up</Button></Link>
           <Link href="/sms/bulk"><Button size="sm" variant="outline"><Users className="h-3 w-3 mr-1" /> Bulk SMS</Button></Link>
+          <Link href="/sms/templates"><Button size="sm" variant="outline"><FileText className="mr-1 h-3 w-3" /> Templates</Button></Link>
         </div>
       </div>
 

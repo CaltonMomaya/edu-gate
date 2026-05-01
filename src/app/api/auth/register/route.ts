@@ -67,8 +67,10 @@ export async function POST(request: Request) {
   // 4. Create default departments
   await supabase.from('departments').insert([
     { school_id: school.id, name: 'Library', clearance_order: 1 },
-    { school_id: school.id, name: 'Finance', clearance_order: 5 },
-    { school_id: school.id, name: 'Discipline', clearance_order: 6 },
+    { school_id: school.id, name: 'Examinations', clearance_order: 2 },
+    { school_id: school.id, name: 'Games & Sports', clearance_order: 3 },
+    { school_id: school.id, name: 'Finance', clearance_order: 4 },
+    { school_id: school.id, name: 'Discipline', clearance_order: 5 },
   ]);
 
   return NextResponse.redirect(new URL('/login?registered=true', request.url));

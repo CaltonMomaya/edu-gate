@@ -16,7 +16,7 @@ import {
   Gamepad2, Music, FlaskConical, X, Home, CreditCard, UserPlus,
   MessageSquare, Download, Activity, HelpCircle, History, Database,
   Shield, Palette, Bell, PieChart, Building2,
-  Mail, MailCheck, Play, CheckCircle, Rocket,
+  Mail, MailCheck, Play, CheckCircle, Rocket, Languages,
 } from 'lucide-react';
 import type { UserRole } from '@/types';
 
@@ -90,19 +90,52 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [userRole, setUserRole] = useState<UserRole>('admin');
   const [navigation, setNavigation] = useState<NavItem[]>(allNavigation);
   const { primaryColor, secondaryColor, logoUrl, schoolName } = useBranding();
+  const [isLocked, setIsLocked] = useState(false);
 
-  useEffect(() => { loadUserRole(); }, []);
+  useEffect(() => { 
+    loadUserRole(); 
+    checkSubscription();
+  }, []);
 
   async function loadUserRole() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const { data: userData } = await supabase.from('users').select('role').eq('id', user.id).single();
     if (userData?.role) {
-      setUserRole(userData.role as UserRole);
+      const role = userData.role as UserRole;
+      setUserRole(role);
+      if (role === 'admin') { setNavigation(allNavigation); }
+      else {
+        setNavigation(allNavigation.filter(item => {
+          if (item.separator) return true;
+          if (!item.roles) return true;
+          return item.roles.includes(role);
+        }).filter((item, index, arr) => {
+          if (item.separator && (index === 0 || arr[index - 1]?.separator)) return false;
+          if (item.separator && index === arr.length - 1) return false;
+          return true;
+        }));
+      }
     }
   }
 
+  async function checkSubscription() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data: userData } = await supabase.from('users').select('school_id').eq('id', user.id).single();
+    if (!userData?.school_id) return;
+    const { data: school } = await supabase.from('schools').select('subscription_status, subscription_expires_at').eq('id', userData.school_id).single();
+    if (!school) return;
+    const locked = school.subscription_status === 'not_paid' || 
+                    (school.subscription_status === 'trial' && new Date(school.subscription_expires_at) < new Date());
+    setIsLocked(locked);
+  }
+
   const handleNavClick = () => { if (window.innerWidth < 1024) onClose(); };
+
+  const filteredNavigation = isLocked 
+    ? navigation.filter(item => item.href === '/subscription')
+    : navigation;
 
   const sidebarContent = (
     <div className="flex h-full flex-col text-white" style={{ background: `linear-gradient(to bottom, ${primaryColor}E6, ${secondaryColor}E6)` }}>
@@ -117,7 +150,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
       </div>
 
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {navigation.map((item, index) => {
+        {filteredNavigation.map((item, index) => {
           if (item.separator) return <Separator key={`sep-${index}`} className="my-3 bg-white/10" />;
           if (!item.href) return null;
           const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');

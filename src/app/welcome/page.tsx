@@ -131,6 +131,7 @@ export default function LandingPage() {
                 <p><Link href="/login" className="hover:text-white">Staff Login</Link></p>
                 <p><Link href="/parent" className="hover:text-white">Parent Portal</Link></p>
                 <p><Link href="/register" className="hover:text-white">Register School</Link></p>
+                <p><Link href="/admin" className="hover:text-white">Admin Access</Link></p>
               </div>
             </div>
             <div>

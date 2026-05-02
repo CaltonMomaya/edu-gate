@@ -3,160 +3,116 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { CreditCard, Check, Clock, AlertTriangle, Crown, Zap, Shield, ExternalLink, Loader2 } from 'lucide-react';
-
-interface Plan {
-  id: string; name: string; display_name: string; price_monthly: number;
-  student_limit: number | null; sms_credits: number; storage_gb: number; features: any;
-}
+import { CreditCard, Calendar, MessageSquare, Loader2, Check } from 'lucide-react';
 
 export default function SubscriptionPage() {
   const supabase = createClient();
-  const [plans, setPlans] = useState<Plan[]>([]);
-  const [school, setSchool] = useState<any>(null);
-  const [currentPlan, setCurrentPlan] = useState<Plan | null>(null);
-  const [isLoading, setIsLoading] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [school, setSchool] = useState(null);
+  const [plans, setPlans] = useState([]);
 
   useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    const { data: userData } = await supabase.from('users').select('school_id').eq('id', user.id).single();
-    if (!userData?.school_id) return;
+    const { data: u } = await supabase.from('users').select('school_id').eq('id', user.id).single();
+    if (!u?.school_id) return;
 
-    const { data: schoolData } = await supabase.from('schools').select('*').eq('id', userData.school_id).single();
+    const { data: schoolData } = await supabase.from('schools').select('*').eq('id', u.school_id).single();
     if (schoolData) setSchool(schoolData);
 
-    const { data: plansData } = await supabase.from('plans').select('*').order('price_monthly');
-    if (plansData) {
-      setPlans(plansData);
-      if (schoolData?.subscription_plan_id) {
-        setCurrentPlan(plansData.find(p => p.id === schoolData.subscription_plan_id) || null);
-      }
-    }
+    // 3 packages only - Starter, Standard, Premium
+    const { data: planData } = await supabase.from('subscription_plans').select('*').eq('is_active', true);
+    if (planData) setPlans(planData);
+
+    setLoading(false);
   }
 
-  async function handleUpgrade(planName: string) {
-    setIsLoading(planName);
-    try {
-      // In production, this calls Lemon Squeezy to create checkout
-      // For now, simulate a successful checkout
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: userData } = await supabase.from('users').select('school_id').eq('id', user.id).single();
-      if (!userData?.school_id) return;
-
-      const plan = plans.find(p => p.name === planName);
-      if (!plan) return;
-
-      // Simulate payment (in production, redirect to Lemon Squeezy checkout)
-      const expiryDate = new Date();
-      expiryDate.setMonth(expiryDate.getMonth() + 1);
-
-      await supabase.from('schools').update({
-        subscription_status: 'active',
-        subscription_plan_id: plan.id,
-        subscription_expires_at: expiryDate.toISOString(),
-      }).eq('id', userData.school_id);
-
-      toast.success(`Upgraded to ${plan.display_name}!`);
-      loadData();
-    } catch (error) {
-      toast.error('Failed to upgrade. Try again.');
-    } finally {
-      setIsLoading(null);
-    }
+  async function initiatePayment(planId: string) {
+    toast.info(`Paystack: Plan ${planId}`);
   }
 
-  const daysLeft = school?.subscription_expires_at
-    ? Math.ceil((new Date(school.subscription_expires_at).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    : 0;
+  function formatDate(dateString: string) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-GB', {
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+  }
+
+  if (loading) return <div className="p-6"><Loader2 className="h-8 w-8 animate-spin mx-auto" /></div>;
+
+  const isLocked = school?.subscription_status === 'not_paid' || 
+                   (school?.subscription_status === 'trial' && new Date(school.subscription_expires_at) < new Date());
 
   return (
     <div className="p-6 space-y-6">
-      <div><h1 className="text-2xl font-bold text-slate-800">Subscription</h1><p className="text-slate-500">Manage your plan and billing</p></div>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Subscription</h1>
+          <p className="text-slate-500">Manage your subscription and SMS credits</p>
+        </div>
+        <Badge className={
+          school?.subscription_status === 'active' ? 'bg-emerald-100 text-emerald-700' :
+          school?.subscription_status === 'trial' ? 'bg-amber-100 text-amber-700' :
+          school?.subscription_status === 'not_paid' ? 'bg-red-100 text-red-700' :
+          'bg-slate-100 text-slate-700'
+        }>
+          {school?.subscription_status || 'Unknown'}
+        </Badge>
+      </div>
 
-      {/* Current Plan */}
-      <Card className="border-0 shadow-sm bg-gradient-to-r from-blue-600 to-emerald-600 text-white">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-white/80 text-sm">Current Plan</p>
-              <p className="text-3xl font-bold">{currentPlan?.display_name || 'Free Trial'}</p>
-              <p className="text-white/80 text-sm mt-1">{daysLeft > 0 ? `${daysLeft} days remaining` : 'Expired'}</p>
-            </div>
-            <div className="text-right">
-              {school?.subscription_status === 'active' ? (
-                <Badge className="bg-white/20 text-white"><Check className="h-3 w-3 mr-1" />Active</Badge>
-              ) : school?.subscription_status === 'grace_period' ? (
-                <Badge className="bg-amber-400/20 text-white"><Clock className="h-3 w-3 mr-1" />Grace Period</Badge>
-              ) : (
-                <Badge className="bg-red-400/20 text-white"><AlertTriangle className="h-3 w-3 mr-1" />Suspended</Badge>
-              )}
-              <p className="text-white/80 text-sm mt-2">SMS: {school?.sms_balance || 0}</p>
-            </div>
+      <Card>
+        <CardHeader><CardTitle><Calendar className="mr-2 h-5 w-5 inline" /> Current Status</CardTitle></CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-3 gap-4">
+            <div><p className="text-sm text-slate-500">Status</p><p className="font-medium">{school?.subscription_status}</p></div>
+            <div><p className="text-sm text-slate-500">Expires</p><p className="font-medium">{school?.subscription_expires_at ? formatDate(school.subscription_expires_at) : 'N/A'}</p></div>
+            <div><p className="text-sm text-slate-500">SMS Credits</p><p className="font-medium">{school?.sms_balance || 0}</p></div>
           </div>
+          {isLocked && (
+            <div className="mt-4 p-4 bg-red-50 rounded-lg">
+              <p className="text-red-700 font-medium">⚠️ Your trial has expired. Please subscribe to continue using EDU GATE.</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Plans */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {plans.map((plan) => (
-          <Card key={plan.id} className={`border-0 shadow-sm relative ${currentPlan?.id === plan.id ? 'ring-2 ring-emerald-500' : ''}`}>
-            {currentPlan?.id === plan.id && (
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                <Badge className="bg-emerald-500 text-white">Current Plan</Badge>
-              </div>
-            )}
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                {plan.name === 'starter' ? <Shield className="h-5 w-5 text-blue-500" /> :
-                 plan.name === 'standard' ? <Zap className="h-5 w-5 text-amber-500" /> :
-                 <Crown className="h-5 w-5 text-purple-500" />}
-                {plan.display_name}
-              </CardTitle>
-              <CardDescription>
-                <span className="text-3xl font-bold text-slate-800">KES {plan.price_monthly?.toLocaleString()}</span>
-                <span className="text-slate-500">/month</span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2 text-sm">
-                <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> {plan.student_limit ? `${plan.student_limit} students` : 'Unlimited students'}</p>
-                <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> {plan.sms_credits} SMS credits</p>
-                <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> {plan.storage_gb}GB storage</p>
-                {plan.features?.library && <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Library Module</p>}
-                {plan.features?.leave && <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Leave Management</p>}
-                {plan.features?.clearance && <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Clearance System</p>}
-                {plan.features?.black_book && <p className="flex items-center gap-2"><Check className="h-4 w-4 text-emerald-500" /> Black Book</p>}
-              </div>
-              <Separator />
-              {currentPlan?.id === plan.id ? (
-                <Button className="w-full" disabled>Current Plan</Button>
-              ) : (
-                <Button
-                  className="w-full"
-                  onClick={() => handleUpgrade(plan.name)}
-                  disabled={isLoading === plan.name}
-                >
-                  {isLoading === plan.name ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ExternalLink className="mr-2 h-4 w-4" />}
-                  Upgrade to {plan.display_name}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
-      <p className="text-xs text-slate-400 text-center">
-        💡 Lemon Squeezy handles payments securely. You'll be redirected to checkout.
-        <br />For testing, upgrades are instant.
-      </p>
+      {isLocked && (
+        <Card>
+          <CardHeader><CardTitle><CreditCard className="mr-2 h-5 w-5 inline" /> Subscription Plans</CardTitle></CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {plans.map(plan => (
+                <Card key={plan.id} className="border-2 border-slate-200 hover:border-blue-600 transition-colors">
+                  <CardContent className="p-4 text-center">
+                    <p className="font-bold text-lg">{plan.name}</p>
+                    <p className="text-2xl font-bold text-blue-600">KES {plan.price_kes.toLocaleString()}/mo</p>
+                    <p className="text-sm text-slate-500 mb-4">{plan.duration_months} month(s) · {plan.sms_credits} SMS</p>
+                    <div className="text-left text-sm space-y-1 mb-4">
+                      {plan.features && Object.entries(plan.features).map(([key, value]) => (
+                        <div key={key} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-emerald-600" />
+                          <span>{key.replace(/_/g, ' ')}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <Button onClick={() => initiatePayment(plan.id)} className="mt-4 w-full bg-blue-600">
+                      <CreditCard className="mr-2 h-4 w-4" /> Subscribe
+                    </Button>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
